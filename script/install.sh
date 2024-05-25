@@ -175,12 +175,11 @@ unzip -d ./tmp NapCat.linux.zip
 
 rm -rf ./NapCat.linux.zip
 if [ "$system_arch" = "amd64" ]; then
-    mv ./tmp/NapCat.linux.x64 ./NapCat/
+    mv ./tmp/NapCat.linux.x64/* ./NapCat/
 elif [ "$system_arch" = "arm64" ]; then
-    mv ./tmp/NapCat.linux.arm64 ./NapCat/
+    mv ./tmp/NapCat.linux.arm64/* ./NapCat/
 fi
-rm -rf /tmp/
-
+rm -rf ./tmp/
 chmod +x ./NapCat/start.sh
 
 echo "安装完成 输入./NapCat/start.sh 启动"
