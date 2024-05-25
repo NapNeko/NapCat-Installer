@@ -108,6 +108,7 @@ fi
 echo "当前系统架构：$system_arch"
 
 qq_download_url=""
+package_installer=$(detect_package_installer)
 
 if [ "$system_arch" = "amd64" ]; then
     if ["$package_installer" = "rpm" ]; then
@@ -128,8 +129,6 @@ if ["$qq_download_url" = "" ]; then
     exit 1
 fi
 echo "QQ下载链接：$qq_download_url"
-
-package_installer=$(detect_package_installer)
 
 # 没有完成强制安装
 if ["$package_installer" = "rpm" ]; then
