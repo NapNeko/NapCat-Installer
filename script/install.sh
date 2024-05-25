@@ -149,7 +149,7 @@ else
     sudo yum install libgbm libasound
 fi
 
-$napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
+napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
 if [ "$napcat_version" = "" ]; then
     echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
