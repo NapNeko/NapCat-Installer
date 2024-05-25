@@ -109,18 +109,18 @@ echo "当前系统架构：$system_arch"
 
 qq_download_url=""
 package_installer=$(detect_package_installer)
-
+https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
 if [ "$system_arch" = "amd64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_amd64_[^ ]*.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_amd64_[0-9]+.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_amd64_[^ ]*.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_amd64_[0-9]+.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_arm64_[0-9]+.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_arm64_[0-9]+.deb')
     fi
 fi
 
