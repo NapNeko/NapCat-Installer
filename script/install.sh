@@ -76,7 +76,7 @@ if [ "$use_docker" = "y" ]; then
     while true; do
         echo "请输入QQ号："
         read -r qq
-        echo "请选择模式（ws/reverse_ws/reverse_http） 不选择默认启用ws："
+        echo "请选择模式（ws/reverse_ws/reverse_http）"
         read -r mode
         docker_command=$(generate_docker_command "$qq" "$mode")
         echo "即将执行以下命令：$docker_command"
@@ -87,6 +87,10 @@ if [ "$use_docker" = "y" ]; then
             * ) echo "请输入y或n";;
         esac
     done
+    if [ "$docker_command" != "" ]; then
+        eval "$docker_command"
+        echo "安装成功"
+    fi
 exit 0
 elif [ "$use_docker" = "n" ]; then
     echo "不使用Docker安装"
