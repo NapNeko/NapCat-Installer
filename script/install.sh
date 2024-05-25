@@ -13,11 +13,11 @@ generate_docker_command() {
     docker_reverse_ws = "docker run -d -e ACCOUNT=$qq -e WSR_ENABLE=true -e WS_URLS='[]' --name napcat --restart=always mlikiowa/napcat-docker:latest"
     docker_reverse_http = "docker run -d -e ACCOUNT=$qq -e HTTP_ENABLE=true -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
     if [ "$mode" = "ws" ]; then
-        echo "$docker_ws"
+        echo $docker_ws
     elif [ "$mode" = "reverse_ws" ]; then
-        echo "$docker_reverse_ws"
+        echo $docker_reverse_ws
     elif [ "$mode" = "reverse_http" ]; then
-        echo "$docker_reverse_http"
+        echo $docker_reverse_http
     else
         exit 1
     fi
