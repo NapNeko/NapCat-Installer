@@ -169,17 +169,18 @@ echo "NapCatQQ下载链接：$napcat_download_url"
 curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 
 # 解压与清理
-sudo mkdir ./NapCat/
+mkdir ./NapCat/
+mkdir ./tmp/
 unzip -d ./NapCat NapCat.linux.zip
+
 rm -rf ./NapCat.linux.zip
 if [ "$system_arch" = "amd64" ]; then
-    mv ./NapCat/NapCat.linux.x64 ./NapCat/
-    rm -rf ./NapCat/NapCat.linux.x64/
+    mv ./tmp/NapCat.linux.x64 ./NapCat/
 elif [ "$system_arch" = "arm64" ]; then
-    mv ./NapCat/NapCat.linux.arm64 ./NapCat/
-    rm -rf ./NapCat/NapCat.linux.arm64/
+    mv ./tmp/NapCat.linux.arm64 ./NapCat/
 fi
+rm -rf /tmp/
 
-sudo chmod +x ./NapCat/start.sh
+chmod +x ./NapCat/start.sh
 
 echo "安装完成 输入./NapCat/start.sh 启动"
