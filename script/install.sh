@@ -171,7 +171,7 @@ curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 # 解压与清理
 mkdir ./NapCat/
 mkdir ./tmp/
-unzip -d ./NapCat NapCat.linux.zip
+unzip -d ./tmp NapCat.linux.zip
 
 rm -rf ./NapCat.linux.zip
 if [ "$system_arch" = "amd64" ]; then
