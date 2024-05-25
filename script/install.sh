@@ -155,8 +155,10 @@ if [ "$napcat_version" = "" ]; then
 fi
 
 napcat_download_url=""
+#https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.arm64.zip
+#https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.x64.zip
 if [ "$system_arch" = "amd64" ]; then
-    napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.amd64.zip"
+    napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.x64.zip"
 elif [ "$system_arch" = "arm64" ]; then
     napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
 else 
