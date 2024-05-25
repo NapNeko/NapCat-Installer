@@ -6,7 +6,7 @@ get_system_arch() {
 }
 
 # 函数：根据参数生成docker命令
-generate_docker_command(qq,mode) {
+generate_docker_command() {
     local qq=$1
     local mode=$2
     docker_ws = "docker run -d -e ACCOUNT=$qq -e WS_ENABLE=true -p 3001:3001 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
