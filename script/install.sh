@@ -19,18 +19,14 @@ generate_docker_command(qq,mode) {
     elif [ "$mode" = "reverse_http" ]; then
         echo "$docker_reverse_http"
     else
-        echo "Invalid mode: $mode"
         exit 1
     fi
-    echo ""
 }
 
 # 函数：检查并返回可用的下载工具
 detect_download_tool() {
     if command -v wget &> /dev/null; then
         echo "wget"
-    elif command -v curl &> /dev/null; then
-        echo "curl"
     else
         echo "none"
     fi
@@ -67,26 +63,8 @@ check_docker() {
     fi
 }
 
-# 函数：请求http url获取文本内容作为函数返回值
-http_get() {
-    local url=$1
-    local tool=$2
-
-    if [ "$tool" = "wget" ]; then
-        echo $(wget -qO- $url)
-    elif [ "$tool" = "curl" ]; then
-        echo $(curl -s $url)
-    else
-        echo "无法识别的包管理器，无法安装下载工具。"
-        exit 1
-    fi
-    echo ""
-}
-
-
 # 保证 curl/wget apt/rpm 基础环境
-echo "检测下载工具和包管理器..."
-download_tool=$(detect_download_tool)
+echo "检测包管理器..."
 package_manager=$(detect_package_manager)
 
 # 如果没有可用的下载工具，则根据包管理器安装curl或wget
@@ -101,29 +79,12 @@ if [ "$download_tool" = "none" ]; then
         echo "无法识别的包管理器，无法安装下载工具。"
         exit 1
     fi
-
-    # 再次检查下载工具
-    download_tool=$(detect_download_tool)
-
-    if [ "$download_tool" = "none" ]; then
-        if [ "$package_manager" = "apt" ]; then
-            echo "尝试使用apt安装wget..."
-            apt install wget -y || { echo "安装wget失败，请检查错误。"; }
-        elif [ "$package_manager" = "yum" ]; then
-            echo "尝试使用yum安装wget..."
-            yum install wget -y || { echo "安装wget失败，请检查错误。"; }
-        else
-            echo "无法识别的包管理器，无法安装下载工具。"
-            exit 1
-        fi
-    fi
 else
-    echo "已有的下载工具：$download_tool"
+    echo "Curl 检查成功"
 fi
-
 # 最终检查curl/wegt环境
 if [ "$download_tool" = "none" ]; then
-    echo "无法识别的下载工具，请检查错误。"
+    echo "无法识别Curl，请检查错误。"
     exit 1
 fi
 
@@ -132,11 +93,7 @@ echo "是否使用Docker安装？(y/n)"
 read -r use_docker
 if [ "$use_docker" = "y" ]; then
     if [ "$(check_docker)" = "false" ]; then
-        if["$download_tool" = "curl" ]; then
          sudo curl -fsSL https://get.docker.com -o get-docker.sh
-        elif ["$download_tool" = "wget" ]; then
-         sudo wget -O get-docker.sh https://get.docker.com
-        fi
          sudo chmod +x get-docker.sh
          sudo sh get-docker.sh
     fi
@@ -147,6 +104,7 @@ if [ "$use_docker" = "y" ]; then
         echo "Docker安装失败"
         exit 1
     fi
+
     while true; do
         echo "请输入QQ号："
         read -r qq
@@ -161,6 +119,7 @@ if [ "$use_docker" = "y" ]; then
             * ) echo "请输入y或n";;
         esac
     done
+
 elif [ "$use_docker" = "n" ]; then
     echo "不使用Docker安装"
 else
@@ -173,27 +132,22 @@ if [ "$system_arch" = "none" ]; then
     echo "无法识别的系统架构，请检查错误。"
     exit 1
 fi
+
 echo "当前系统架构：$system_arch"
 
-# 读取 https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js 内容
-# ReqData 如下为文本需要文本处理匹配出 https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_?_?_?_??????_arm64_??.deb  的下载链接 ?代表未知值
-# 或者https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_?_?_?_??????_x86_64_??.deb 的下载链接 ?代表未知值
-ReqData=$(http_get "https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js" "$download_tool")
-
-# 获取链接还有问题
 qq_download_url=""
 
 if [ "$system_arch" = "amd64" ]; then
     if ["$package_installer" = "rpm" ]; then
-        qq_download_url=$(echo "$ReqData" | grep -oP 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_x86_64_[0-9]+.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.rpm')
     elif ["$package_installer" = "dpkg" ]; then
-        qq_download_url=$(echo "$ReqData" | grep -oP 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_x86_64_[0-9]+.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
-        if ["$package_installer" = "rpm" ]; then
-        qq_download_url=$(echo "$ReqData" | grep -oP 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_arm64_[0-9]+.rpm')
+    if ["$package_installer" = "rpm" ]; then
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.rpm')
     elif ["$package_installer" = "dpkg" ]; then
-        qq_download_url=$(echo "$ReqData" | grep -oP 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[0-9.]+_[0-9]+_arm64_[0-9]+.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.deb')
     fi
 fi
 
@@ -206,27 +160,14 @@ echo "QQ下载链接：$qq_download_url"
 package_installer=$(detect_package_installer)
 
 # 没有完成强制安装
-if [ "$download_tool" = "curl" ]; then
-    if ["$package_installer" = "rpm" ]; then
-        curl -L "$qq_download_url" -o "QQ.rpm"
-        rpm -ivh "QQ.rpm"
-        rm QQ.rpm
-    elif ["$package_installer" = "dpkg" ]; then
-        curl -L "$qq_download_url" -o "QQ.deb"
-        dpkg -i --force-depends QQ.deb
-        rm QQ.deb
-elif [ "$download_tool" = "wget" ]; then
-    if ["$package_installer" = "rpm" ]; then
-        wget -O "QQ.rpm" "$qq_download_url"
-        rpm -ivh "QQ.rpm"
-        rm QQ.rpm
-    elif ["$package_installer" = "dpkg" ]; then
-        wget -O "QQ.deb" "$qq_download_url"
-        dpkg -i --force-depends QQ.deb
-        rm QQ.deb
-else
-   echo "无法识别的下载工具，请检查错误。"
-   exit 1
+if ["$package_installer" = "rpm" ]; then
+    curl -L "$qq_download_url" -o QQ.rpm
+    rpm -Uvh./QQ.rpm --nodeps --force
+    rm QQ.rpm
+ elif ["$package_installer" = "dpkg" ]; then
+    curl -L "$qq_download_url" -o QQ.deb
+    dpkg -i --force-depends QQ.deb
+    rm QQ.deb
 fi
 
 # 开始安装依赖
@@ -236,6 +177,7 @@ else
     sudo yum install libgbm libasound
 fi
 
+$napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
 if [ "$napcat_version" = "" ]; then
     echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
@@ -246,19 +188,12 @@ if ["$system_arch" = "amd64" ]; then
     napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.amd64.zip"
 elif ["$system_arch" = "arm64" ]; then
     napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
-fi
-if ["$napcat_download_url" = "" ]; then
+else 
     echo "无法下载NapCatQQ，请检查错误。"
     exit 1
 fi
-if [ "$download_tool" = "curl" ]; then
-    curl -L "$napcat_download_url" -o "NapCat.linux.zip"
-elif [ "$download_tool" = "wget" ]; then
-    wget -O "NapCat.linux.zip" "$napcat_download_url"
-else
-   echo "无法识别的下载工具，请检查错误。"
-   exit 1
-fi
+
+curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 
 # 解压与清理
 unzip -q NapCat.linux.zip
