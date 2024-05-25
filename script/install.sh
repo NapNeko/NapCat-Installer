@@ -111,31 +111,31 @@ qq_download_url=""
 package_installer=$(detect_package_installer)
 
 if [ "$system_arch" = "amd64" ]; then
-    if ["$package_installer" = "rpm" ]; then
+    if [ "$package_installer" = "rpm" ]; then
         qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.rpm')
-    elif ["$package_installer" = "dpkg" ]; then
+    elif [ "$package_installer" = "dpkg" ]; then
         qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
-    if ["$package_installer" = "rpm" ]; then
+    if [ "$package_installer" = "rpm" ]; then
         qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.rpm')
-    elif ["$package_installer" = "dpkg" ]; then
+    elif [ "$package_installer" = "dpkg" ]; then
         qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_arm64_[^ ]*.deb')
     fi
 fi
 
-if ["$qq_download_url" = "" ]; then
+if [ "$qq_download_url" = "" ]; then
     echo "无法下载QQ，请检查错误。"
     exit 1
 fi
 echo "QQ下载链接：$qq_download_url"
 
 # 没有完成强制安装
-if ["$package_installer" = "rpm" ]; then
+if [ "$package_installer" = "rpm" ]; then
     curl -L "$qq_download_url" -o QQ.rpm
     rpm -Uvh./QQ.rpm --nodeps --force
     rm QQ.rpm
- elif ["$package_installer" = "dpkg" ]; then
+ elif [ "$package_installer" = "dpkg" ]; then
     curl -L "$qq_download_url" -o QQ.deb
     dpkg -i --force-depends QQ.deb
     rm QQ.deb
@@ -155,9 +155,9 @@ if [ "$napcat_version" = "" ]; then
 fi
 
 napcat_download_url=""
-if ["$system_arch" = "amd64" ]; then
+if [ "$system_arch" = "amd64" ]; then
     napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.amd64.zip"
-elif ["$system_arch" = "arm64" ]; then
+elif [ "$system_arch" = "arm64" ]; then
     napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
 else 
     echo "无法下载NapCatQQ，请检查错误。"
