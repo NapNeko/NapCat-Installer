@@ -112,9 +112,9 @@ package_installer=$(detect_package_installer)
 
 if [ "$system_arch" = "amd64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_amd64_[^ ]*.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_x86_64_[^ ]*.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_[^ ]*_amd64_[^ ]*.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
     if [ "$package_installer" = "rpm" ]; then
@@ -169,8 +169,8 @@ curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 # 解压与清理
 unzip -q NapCat.linux.zip
 mkdir ./NapCat/
-mv ./NapCat.linux.${system_arch} ./NapCat/
-rm -rf ./NapCat.linux.zip
+#mv ./NapCat.linux.${system_arch} ./NapCat/
+#rm -rf ./NapCat.linux.zip
 
 sudo chmod +x ./NapCat/start.sh
 
