@@ -171,7 +171,7 @@ curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 # 解压与清理
 mkdir ./NapCat/
 mkdir ./tmp/
-unzip -d ./tmp NapCat.linux.zip
+unzip -q -d ./tmp NapCat.linux.zip
 
 rm -rf ./NapCat.linux.zip
 if [ "$system_arch" = "amd64" ]; then
@@ -180,6 +180,6 @@ elif [ "$system_arch" = "arm64" ]; then
     mv ./tmp/NapCat.linux.arm64/* ./NapCat/
 fi
 rm -rf ./tmp/
-chmod +x ./NapCat/start.sh
+chmod +x ./NapCat/napcat.sh
 
-echo "安装完成 输入./NapCat/start.sh 启动"
+echo "安装完成 输入 bash ./NapCat/napcat.sh 启动"
