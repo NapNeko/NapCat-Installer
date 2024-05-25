@@ -1,5 +1,34 @@
 #!/bin/bash
 
+# From DebianNET.sh
+while [[ $# -ge 1 ]]; do
+    case $1 in
+        --docker)
+            shift
+            use_docker="$1"
+            shift
+            ;;
+        --qq)
+            shift
+            qq="$1"
+            shift
+            ;;
+        --mode)
+            shift
+            mode="$1"
+            shift
+            ;;
+        --confirm)
+            shift
+            confirm="y"
+            ;;
+        *)
+            echo -ne " Usage: bash $0 --docker [y|n] --qq \"114514\" --mode [ws|reverse_ws|reverse_http] --confirm\n"
+            exit 1;
+            ;;
+    esac
+done
+
 # 函数：检查当前系统是amd64还是x86_64 读取失败返回none
 get_system_arch() {
     echo $(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) 
@@ -56,9 +85,11 @@ check_docker() {
 
 # 保证 curl/wget apt/rpm 基础环境
 echo "检测包管理器..."
-# 询Docker安装询问
-echo "是否使用Docker安装？(y/n)"
-read -r use_docker
+if [[ -z $use_docker ]]; then
+    # 询Docker安装询问
+    echo "是否使用Docker安装？(y/n)"
+    read -r use_docker
+fi
 if [ "$use_docker" = "y" ]; then
     if [ "$(check_docker)" = "false" ]; then
          sudo curl -fsSL https://get.docker.com -o get-docker.sh
@@ -74,24 +105,37 @@ if [ "$use_docker" = "y" ]; then
     fi
 
     while true; do
-        echo "请输入QQ号："
-        read -r qq
-        echo "请选择模式（ws/reverse_ws/reverse_http）"
-        read -r mode
+        if [[ -z $qq ]]; then
+            echo "请输入QQ号："
+            read -r qq
+        fi
+        if [[ -z $mode ]]; then
+            echo "请选择模式（ws/reverse_ws/reverse_http）"
+            read -r mode
+        fi
         docker_command=$(generate_docker_command "$qq" "$mode")
-        echo "即将执行以下命令：$docker_command"
-        read -p "是否继续？(y/n)" confirm
+        if [[ -z $docker_command ]]; then
+            echo "模式错误, 无法生成命令"
+            confirm="n"
+        else
+            echo "即将执行以下命令：$docker_command"
+        fi
+        if [[ -z $confirm ]]; then
+            read -p "是否继续？(y/n) " confirm
+        fi
         case $confirm in
             y|Y ) break;;
-            n|N ) continue;;
-            * ) echo "请输入y或n";;
+            * )
+                # 如果取消了则说明需要重新初始化以上信息
+                confirm=""
+                mode=""
+                qq=""
+                ;;
         esac
     done
-    if [ "$docker_command" != "" ]; then
-        eval "$docker_command"
-        echo "安装成功"
-    fi
-exit 0
+    eval "$docker_command"
+    echo "安装成功"
+    exit 0
 elif [ "$use_docker" = "n" ]; then
     echo "不使用Docker安装"
 else
