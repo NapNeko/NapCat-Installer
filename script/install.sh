@@ -2,13 +2,7 @@
 
 # 函数：检查当前系统是amd64还是x86_64 读取失败返回none
 get_system_arch() {
-    arch=$(uname -m)
-    if [ "$arch" = "x86_64" ] || [ "$arch" = "amd64" ]; then
-        return "amd64"
-    elif [ "$arch" = "i386" ] || [ "$arch" = "i686" ]; then
-        return "x86_64"
-    fi
-    return "none"
+    echo $(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) 
 }
 
 # 函数：根据参数生成docker命令
@@ -19,57 +13,57 @@ generate_docker_command(qq,mode) {
     docker_reverse_ws = "docker run -d -e ACCOUNT=$qq -e WSR_ENABLE=true -e WS_URLS='[]' --name napcat --restart=always mlikiowa/napcat-docker:latest"
     docker_reverse_http = "docker run -d -e ACCOUNT=$qq -e HTTP_ENABLE=true -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
     if [ "$mode" = "ws" ]; then
-        return "$docker_ws"
+        echo "$docker_ws"
     elif [ "$mode" = "reverse_ws" ]; then
-        return "$docker_reverse_ws"
+        echo "$docker_reverse_ws"
     elif [ "$mode" = "reverse_http" ]; then
-        return "$docker_reverse_http"
+        echo "$docker_reverse_http"
     else
         echo "Invalid mode: $mode"
         exit 1
     fi
-    return ""
+    echo ""
 }
 
 # 函数：检查并返回可用的下载工具
 detect_download_tool() {
     if command -v wget &> /dev/null; then
-        return "wget"
+        echo "wget"
     elif command -v curl &> /dev/null; then
-        return "curl"
+        echo "curl"
     else
-        return "none"
+        echo "none"
     fi
 }
 
 # 函数：检查并返回可用的包管理器
 detect_package_manager() {
     if command -v apt &> /dev/null; then
-        return "apt"
+        echo "apt"
     elif command -v yum &> /dev/null; then
-        return "yum"
+        echo "yum"
     else
-        return "none"
+        echo "none"
     fi
 }
 
 # 函数：检查并返回可用的命令
 detect_package_installer() {
     if command -v dpkg &> /dev/null; then
-        return "dpkg"
+        echo "dpkg"
     elif command -v rpm &> /dev/null; then
-        return "rpm"
+        echo "rpm"
     else
-        return "none"
+        echo "none"
     fi
 }
 
 # 函数：检查用户是否安装docker
 check_docker() {
     if command -v docker &> /dev/null; then
-        return "true"
+        echo "true"
     else
-        return "false"
+        echo "false"
     fi
 }
 
@@ -79,14 +73,14 @@ http_get() {
     local tool=$2
 
     if [ "$tool" = "wget" ]; then
-        return $(wget -qO- $url)
+        echo $(wget -qO- $url)
     elif [ "$tool" = "curl" ]; then
-        return $(curl -s $url)
+        echo $(curl -s $url)
     else
         echo "无法识别的包管理器，无法安装下载工具。"
         exit 1
     fi
-    return ""
+    echo ""
 }
 
 
