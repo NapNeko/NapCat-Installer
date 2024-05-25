@@ -112,15 +112,15 @@ package_installer=$(detect_package_installer)
 #https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
 if [ "$system_arch" = "amd64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_\d+\.\d+\.\d+_\d{6}_x86_64_\d{2}.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_86_64_[0-9]{2}\.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_\d+\.\d+\.\d+_\d{6}_amd64_\d{2}.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_\d+\.\d+\.\d+_\d{6}_aarch64_\d{2}.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o 'https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_\d+\.\d+\.\d+_\d{6}_arm64_\d{2}.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
     fi
 fi
 
