@@ -163,7 +163,7 @@ else
     echo "无法下载NapCatQQ，请检查错误。"
     exit 1
 fi
-
+echo "NapCatQQ下载链接：$napcat_download_url"
 curl -L "$napcat_download_url" -o "NapCat.linux.zip"
 
 # 解压与清理
