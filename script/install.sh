@@ -23,15 +23,6 @@ generate_docker_command(qq,mode) {
     fi
 }
 
-# 函数：检查并返回可用的下载工具
-detect_download_tool() {
-    if command -v wget &> /dev/null; then
-        echo "wget"
-    else
-        echo "none"
-    fi
-}
-
 # 函数：检查并返回可用的包管理器
 detect_package_manager() {
     if command -v apt &> /dev/null; then
@@ -65,29 +56,6 @@ check_docker() {
 
 # 保证 curl/wget apt/rpm 基础环境
 echo "检测包管理器..."
-package_manager=$(detect_package_manager)
-
-# 如果没有可用的下载工具，则根据包管理器安装curl或wget
-if [ "$download_tool" = "none" ]; then
-    if [ "$package_manager" = "apt" ]; then
-        echo "尝试使用apt安装curl..."
-        apt install curl -y || { echo "安装curl失败，请检查错误。"; }
-    elif [ "$package_manager" = "yum" ]; then
-        echo "尝试使用yum安装curl..."
-        yum install curl -y || { echo "安装curl失败，请检查错误。"; }
-    else
-        echo "无法识别的包管理器，无法安装下载工具。"
-        exit 1
-    fi
-else
-    echo "Curl 检查成功"
-fi
-# 最终检查curl/wegt环境
-if [ "$download_tool" = "none" ]; then
-    echo "无法识别Curl，请检查错误。"
-    exit 1
-fi
-
 # 询Docker安装询问
 echo "是否使用Docker安装？(y/n)"
 read -r use_docker
