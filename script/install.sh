@@ -13,6 +13,8 @@ get_system_arch() {
 
 # 函数：根据参数生成docker命令
 generate_docker_command(qq,mode) {
+    local qq=$1
+    local mode=$2
     docker_ws = "docker run -d -e ACCOUNT=$qq -e WS_ENABLE=true -p 3001:3001 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
     docker_reverse_ws = "docker run -d -e ACCOUNT=$qq -e WSR_ENABLE=true -e WS_URLS='[]' --name napcat --restart=always mlikiowa/napcat-docker:latest"
     docker_reverse_http = "docker run -d -e ACCOUNT=$qq -e HTTP_ENABLE=true -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
@@ -72,7 +74,10 @@ check_docker() {
 }
 
 # 函数：请求http url获取文本内容作为函数返回值
-http_get(url,tool) {
+http_get() {
+    local url=$1
+    local tool=$2
+
     if [ "$tool" = "wget" ]; then
         return $(wget -qO- $url)
     elif [ "$tool" = "curl" ]; then
@@ -177,7 +182,8 @@ fi
 echo "当前系统架构：$system_arch"
 
 # 读取 https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js 内容
-# ReqData 如下为文本需要文本处理匹配出 https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_x.x.x_xxxxxx_arm64_xx.deb 的下载链接 代表未知值
+# ReqData 如下为文本需要文本处理匹配出 https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_?_?_?_??????_arm64_??.deb  的下载链接 ?代表未知值
+# 或者https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_?_?_?_??????_x86_64_??.deb 的下载链接 ?代表未知值
 ReqData=$(http_get "https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js" "$download_tool")
 
 # 获取链接还有问题
@@ -210,26 +216,30 @@ if [ "$download_tool" = "curl" ]; then
     if ["$package_installer" = "rpm" ]; then
         curl -L "$qq_download_url" -o "QQ.rpm"
         rpm -ivh "QQ.rpm"
+        rm QQ.rpm
     elif ["$package_installer" = "dpkg" ]; then
         curl -L "$qq_download_url" -o "QQ.deb"
-        dpkg -i "QQ.deb"
+        dpkg -i --force-depends QQ.deb
+        rm QQ.deb
 elif [ "$download_tool" = "wget" ]; then
     if ["$package_installer" = "rpm" ]; then
         wget -O "QQ.rpm" "$qq_download_url"
         rpm -ivh "QQ.rpm"
+        rm QQ.rpm
     elif ["$package_installer" = "dpkg" ]; then
         wget -O "QQ.deb" "$qq_download_url"
-        dpkg -i "QQ.deb"
+        dpkg -i --force-depends QQ.deb
+        rm QQ.deb
 else
    echo "无法识别的下载工具，请检查错误。"
    exit 1
 fi
 
-# 开始安装依赖 错误的留着占位
+# 开始安装依赖
 if [ "$package_manager" = "apt" ];then
-    sudo apt install -y libx11-dev libxext-dev libxrender-dev libxcb-render-util0-dev libxcb-xinerama0-devlibxcb-xinerama0 libxcb-xinerama0
+    sudo apt install libgbm1 libasound2
 else
-    sudo yum install -y libX11-devel libXext-devel libXrender-devel libxcb-render-util0-devel libxcb-xinerama0-devel libxcb-xinerama0 libx
+    sudo yum install libgbm libasound
 fi
 
 if [ "$napcat_version" = "" ]; then
