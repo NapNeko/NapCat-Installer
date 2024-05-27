@@ -132,7 +132,7 @@ Write-Host "Remote Version: $remoteVersion"
 $url = "https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip"
 try {
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-    $zipFile = "$env:TEMP\NapCat.win32.x64.zip"
+    $zipFile = ".\NapCat.win32.x64.zip"
     $zipFile | Out-File -FilePath $zipFile -Encoding utf8
     # 解压zip到当前目录的./tmp文件夹
     $zip = [System.IO.Compression.ZipFile]::OpenRead($zipFile)
