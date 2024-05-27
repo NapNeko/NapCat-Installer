@@ -1,6 +1,5 @@
-# Note: Only necessary in *Windows PowerShell*.
-# (These assemblies are automatically loaded in PowerShell (Core) 7+.)
 Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+Add-Type -AssemblyName System.Windows.Forms
 
 # Verify that types from both assemblies were loaded.
 [System.IO.Compression.ZipArchiveMode]; [IO.Compression.ZipFile]
@@ -129,19 +128,26 @@ if ($null -eq $remoteVersion) {
 }
 Write-Host "Remote Version: $remoteVersion"
 #下载https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip 的zip
-$url = "https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip"
+$url = "https://mirror.ghproxy.com/https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip"
 try {
+    Write-Host "Wait ..."
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
     $zipFile = ".\NapCatQQ.zip"
     # 保存文件到当前目录
-    $response.Content | Set-Content -Path $zipFile -Encoding Byte
+    [IO.File]::WriteAllBytes($zipFile, $response.Content)
     Expand-Archive -Path "./NapCatQQ.zip" -DestinationPath "./NapCatQQ/"
     Remove-Item -Path $zipFile -Force
 }catch{
     Write-Host "Download failed. $_"
     exit
 }
-Write-Host "Install Success!"
 # 移动./NapCatQQ/NapCat.win32.x64/内所有文件到./NapCatQQ/
 Get-ChildItem -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
 Remove-Item -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse -Force
+Write-Host "Install Success!"
+# 询问是否启动 ./NapCatQQ/napcat-utf8.bat
+$result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+if ($result -eq "Yes") {
+    Set-Location ./NapCatQQ
+    ./napcat-utf8.bat
+}
