@@ -5,7 +5,7 @@ NapCat 启动!
 ### Linux
 在需要的文件夹 执行此代码 稍等片刻即可运行
 ```bat
-curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@master/script/install.sh && sudo bash napcat.sh
+curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.sh && sudo bash napcat.sh
 ```
 
 ### Windows11
