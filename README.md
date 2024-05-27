@@ -9,12 +9,16 @@ curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/scri
 ```
 
 ### Windows11
-在需要的文件夹右键 `选择在终端中打开` 复制以下内容 粘贴 并运行 即可在此目录安装NC 
+在需要的文件夹右键选择 `在终端中打开` 
+![Open](https://github.com/NapNeko/NapCat-Installer/assets/61873808/1ceb84a5-0aed-4193-ac19-b0128299632d)
 
 ```bat
 curl -o install.ps1 https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.ps1
 powershell -ExecutionPolicy ByPass -File ./install.ps1 -verb runas
 ```
+复制上面内容 粘贴 选择仍然粘贴后回车即可
+
+![image](https://github.com/NapNeko/NapCat-Installer/assets/61873808/b16aeb92-acb7-4cf7-a07e-0b1143d9b835)
 
 ## Windows10
 Win+R 输入 cmd 输入以下内容
