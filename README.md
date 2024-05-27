@@ -23,7 +23,7 @@ powershell -ExecutionPolicy ByPass -File ./install.ps1 -verb runas
 ## Windows10
 Win+R 输入 cmd 输入以下内容
 ```bat
-more +3 "%~f0" >>generate.ps1 && powershell -ExecutionPolicy ByPass -File ./generate.ps1 -verb runas && del ./generate.ps1
+more +3 "%~f0" >>generate.ps1 && powershell -ExecutionPolicy ByPass -File ./generate.ps1 -verb runas && del ./generate.ps1 && powershell -ExecutionPolicy ByPass -File ./install.ps1 -verb runas 
 goto :eof
 $url = "https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.ps1"
 $response = Invoke-WebRequest -Uri $url -UseBasicParsing
