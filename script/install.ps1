@@ -1,3 +1,10 @@
+# Note: Only necessary in *Windows PowerShell*.
+# (These assemblies are automatically loaded in PowerShell (Core) 7+.)
+Add-Type -AssemblyName System.IO.Compression, System.IO.Compression.FileSystem
+
+# Verify that types from both assemblies were loaded.
+[System.IO.Compression.ZipArchiveMode]; [IO.Compression.ZipFile]
+
 function Get-QQpath {
     try {
         $key = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\QQ"
@@ -44,17 +51,43 @@ function Install-QQ {
     return Get-IsQQInstalled
 }
 function Get-RemoteNapCatVersion {
-    try {
-        $url = "https://fastly.jsdelivr.net/gh/NapNeko/NapCatQQ@main/package.json"
-        $response = Invoke-WebRequest -Uri $url -UseBasicP
-        $json = $response.Content | ConvertFrom-Json
-        return $json.version
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory=$false, Position=0)]
+        [string]$url = "https://fastly.jsdelivr.net/gh/NapNeko/NapCatQQ@main/package.json"
+    )
+
+    begin {
+        # 验证URL格式
+        if (-not [Uri]::IsWellFormedUriString($url, [System.UriKind]::Absolute)) {
+            throw "The provided URL '$url' is not well formed."
+        }
     }
-    catch {
-        throw "get version error: $_"
+
+    process {
+        try {
+            # 使用UseBasicParsing是为了在不支持.NET Framework的系统上避免问题
+            $response = Invoke-WebRequest -Uri $url -UseBasicParsing
+            
+            # 检查HTTP状态码
+            if ($response.StatusCode -ne 200) {
+                throw "Failed to retrieve the resource at '$url'. Status code: $($response.StatusCode)"
+            }
+
+            $json = $response.Content | ConvertFrom-Json
+            # 验证JSON是否包含version属性
+            if (-not ($json -and $json.version)) {
+                throw "The JSON content at '$url' does not contain a valid 'version' property."
+            }
+
+            return $json.version
+        }
+        catch [System.Net.WebException], [System.Management.Automation.PSInvocationException] {
+            # 处理可能的网络异常和JSON解析异常
+            throw "Error when attempting to get version from '$url': $_"
+        }
     }
 }
-
 $isQQInstalled = Get-IsQQInstalled
 
 # 用于检测是否安装QQ
@@ -114,7 +147,7 @@ try {
     $zip.Dispose()
     Remove-Item -Path $zipFile -Force
 }catch{
-    Write-Host "Download failed."
+    Write-Host "Download failed. $_"
     exit
 }
 Write-Host "Install Success!"
