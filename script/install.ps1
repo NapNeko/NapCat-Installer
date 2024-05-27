@@ -132,22 +132,16 @@ Write-Host "Remote Version: $remoteVersion"
 $url = "https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip"
 try {
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-    $zipFile = ".\NapCat.win32.x64.zip"
-    $zipFile | Out-File -FilePath $zipFile -Encoding utf8
-    # 解压zip到当前目录的./tmp文件夹
-    $zip = [System.IO.Compression.ZipFile]::OpenRead($zipFile)
-    foreach ($entry in $zip.Entries) {
-        $entryPath = Join-Path -Path $PSScriptRoot -ChildPath $entry.FullName
-        $directory =Split-Path -Path $entryPath -Parent
-        if (!(Test-Path $directory)) {
-            New-Item -Path $directory -ItemType Directory | Out-Null
-        }
-        [System.IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $entryPath, $true)
-    }
-    $zip.Dispose()
+    $zipFile = ".\NapCatQQ.zip"
+    # 保存文件到当前目录
+    $response.Content | Set-Content -Path $zipFile -Encoding Byte
+    Expand-Archive -Path "./NapCatQQ.zip" -DestinationPath "./NapCatQQ/"
     Remove-Item -Path $zipFile -Force
 }catch{
     Write-Host "Download failed. $_"
     exit
 }
 Write-Host "Install Success!"
+# 移动./NapCatQQ/NapCat.win32.x64/内所有文件到./NapCatQQ/
+Get-ChildItem -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
+Remove-Item -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse -Force
