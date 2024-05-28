@@ -91,7 +91,7 @@ $isQQInstalled = Get-IsQQInstalled
 
 # 用于检测是否安装QQ
 if (!$isQQInstalled) {
-    $result = [System.Windows.Forms.MessageBox]::Show("未检测到QQ, 是否安装?", "提示", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+    $result = [System.Windows.Forms.MessageBox]::Show("Install QQ?", "HInt", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
     if ($result -eq "OK") {
         $QQInstallPath = $folderBrowserDialog.SelectedPath
         if ($QQInstallPath -eq "") {
