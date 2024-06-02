@@ -83,6 +83,11 @@ check_docker() {
     fi
 }
 
+if ! command -v sudo &> /dev/null; then
+    echo -ne "sudo不存在, 请手动安装: \n Centos: yum install -y sudo\n Debian/Ubuntu: apt install -y sudo\n"
+	exit 1
+fi
+
 # 保证 curl/wget apt/rpm 基础环境
 echo "检测包管理器..."
 
@@ -155,9 +160,10 @@ echo "当前系统架构：$system_arch"
 package_manager=$(detect_package_manager)
 # 开始安装依赖
 if [ "$package_manager" = "apt" ];then
-    sudo apt install libgbm1 libasound2 zip jq
+    sudo apt update -y
+    sudo apt install -y libgbm1 libasound2 zip unzip jq curl
 else
-    sudo yum install libgbm libasound
+    sudo yum install -y libgbm alsa-lib-devel nss dbus-libs at-spi2-atk gtk3 cups-libs zip unzip jq curl
 fi
 
 qq_download_url=""
@@ -165,7 +171,7 @@ package_installer=$(detect_package_installer)
 #https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
 if [ "$system_arch" = "amd64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_86_64_[0-9]{2}\.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
         qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
     fi
@@ -186,7 +192,7 @@ echo "QQ下载链接：$qq_download_url"
 # 没有完成强制安装
 if [ "$package_installer" = "rpm" ]; then
     curl -L "$qq_download_url" -o QQ.rpm
-    rpm -Uvh./QQ.rpm --nodeps --force
+    rpm -Uvh ./QQ.rpm --nodeps --force
     rm QQ.rpm
  elif [ "$package_installer" = "dpkg" ]; then
     curl -L "$qq_download_url" -o QQ.deb
