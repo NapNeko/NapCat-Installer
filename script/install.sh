@@ -85,6 +85,7 @@ check_docker() {
 
 # 保证 curl/wget apt/rpm 基础环境
 echo "检测包管理器..."
+
 if [[ -z $use_docker ]]; then
     # 询Docker安装询问
     echo "是否使用Docker安装？(y/n)"
@@ -151,6 +152,14 @@ fi
 
 echo "当前系统架构：$system_arch"
 
+package_manager=$(detect_package_manager)
+# 开始安装依赖
+if [ "$package_manager" = "apt" ];then
+    sudo apt install libgbm1 libasound2 zip jq
+else
+    sudo yum install libgbm libasound
+fi
+
 qq_download_url=""
 package_installer=$(detect_package_installer)
 #https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
@@ -185,12 +194,6 @@ if [ "$package_installer" = "rpm" ]; then
     rm QQ.deb
 fi
 
-# 开始安装依赖
-if [ "$package_manager" = "apt" ];then
-    sudo apt install libgbm1 libasound2
-else
-    sudo yum install libgbm libasound
-fi
 
 napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
 if [ "$napcat_version" = "" ]; then
