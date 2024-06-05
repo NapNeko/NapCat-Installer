@@ -192,11 +192,11 @@ echo "QQ下载链接：$qq_download_url"
 # 没有完成强制安装
 if [ "$package_installer" = "rpm" ]; then
     curl -L "$qq_download_url" -o QQ.rpm
-    rpm -Uvh ./QQ.rpm --nodeps --force
+    rpm -Uvh ./QQ.rpm
     rm QQ.rpm
  elif [ "$package_installer" = "dpkg" ]; then
     curl -L "$qq_download_url" -o QQ.deb
-    dpkg -i --force-depends QQ.deb
+    dpkg -i QQ.deb
     rm QQ.deb
 fi
 
