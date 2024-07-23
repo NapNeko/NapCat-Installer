@@ -161,9 +161,9 @@ package_manager=$(detect_package_manager)
 # 开始安装依赖
 if [ "$package_manager" = "apt" ];then
     sudo apt update -y
-    sudo apt install -y libgbm1 libasound2 zip unzip jq curl
+    sudo apt install -y libgbm1 libasound2 zip unzip jq curl xvfb
 else
-    sudo yum install -y libgbm alsa-lib-devel nss dbus-libs at-spi2-atk gtk3 cups-libs zip unzip jq curl
+    sudo yum install -y libgbm alsa-lib-devel nss dbus-libs at-spi2-atk gtk3 cups-libs zip unzip jq curl xvfb
 fi
 
 qq_download_url=""
@@ -171,15 +171,15 @@ package_installer=$(detect_package_installer)
 #https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
 if [ "$system_arch" = "amd64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
     fi
 elif [ "$system_arch" = "arm64" ]; then
     if [ "$package_installer" = "rpm" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
     elif [ "$package_installer" = "dpkg" ]; then
-        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
+        qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
     fi
 fi
 
@@ -200,39 +200,104 @@ if [ "$package_installer" = "rpm" ]; then
     rm QQ.deb
 fi
 
-
 napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
 if [ "$napcat_version" = "" ]; then
     echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
 fi
 
+github_proxy="https://github.moeyy.xyz" # https://mirror.ghproxy.com
+
 napcat_download_url=""
 #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.arm64.zip
 #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.x64.zip
 if [ "$system_arch" = "amd64" ]; then
-    napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.x64.zip"
+    napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.x64.zip"
 elif [ "$system_arch" = "arm64" ]; then
-    napcat_download_url="https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
+    napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
 else 
     echo "无法下载NapCatQQ，请检查错误。"
     exit 1
 fi
+
+default_file="NapCat.linux.zip"
 echo "NapCatQQ下载链接：$napcat_download_url"
-curl -L "$napcat_download_url" -o "NapCat.linux.zip"
+curl -L "$napcat_download_url" -o "$default_file"
+if [ $? -ne 0 ]; then
+    echo "文件下载失败，请检查错误。"
+    exit 1
+fi
 
 # 解压与清理
 mkdir ./NapCat/
 mkdir ./tmp/
-unzip -q -d ./tmp NapCat.linux.zip
 
-rm -rf ./NapCat.linux.zip
-if [ "$system_arch" = "amd64" ]; then
-    mv ./tmp/NapCat.linux.x64/* ./NapCat/
-elif [ "$system_arch" = "arm64" ]; then
-    mv ./tmp/NapCat.linux.arm64/* ./NapCat/
+clean() {
+    rm -rf ./NapCat/
+    rm -rf ./tmp/
+    if [ $? -ne 0 ]; then
+        echo "临时文件删除失败，请手动删除 $default_file。"
+    fi
+    rm -rf ./NapCat.linux.zip
+    if [ $? -ne 0 ]; then
+        echo "NapCat压缩包删除失败，请手动删除 $default_file。"
+    fi
+}
+
+if [ -f "$default_file" ]; then
+    echo "$default_file 成功下载。"
+else
+    ext_file=$(basename "$napcat_download_url")
+    if [ -f "$ext_file" ]; then
+        mv "$ext_file" "$default_file"
+        if [ $? -ne 0 ]; then
+            echo "$default_file 成功下载。"
+        else
+            echo "文件更名失败，请检查错误。"
+            $(clean)
+            exit 1
+        fi
+    else
+        echo "文件下载失败，请检查错误。"
+        $(clean)
+        exit 1
+    fi
 fi
-rm -rf ./tmp/
-chmod +x ./NapCat/napcat.sh
 
-echo "安装完成 输入 bash ./NapCat/napcat.sh 启动"
+unzip -q -o -d ./tmp NapCat.linux.zip
+if [ $? -ne 0 ]; then
+    echo "文件解压失败，请检查错误。"
+    $(clean)
+    exit 1
+fi
+
+target_folder="/opt/QQ/resources/app/app_launcher"
+mkdir "$target_folder/napcat/"
+
+if [ "$system_arch" = "amd64" ]; then
+    mv -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
+elif [ "$system_arch" = "arm64" ]; then
+    mv -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
+fi
+if [ $? -ne 0 -a $? -ne 1 ]; then
+    echo "文件移动失败，请以root身份运行。"
+    $(clean)
+    exit 1
+fi
+
+chmod -R 777 "$target_folder/napcat/"
+mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
+output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--enable-logging');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\"file://\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
+echo "$output_index_js" > "$target_folder/index.js"
+
+if [ $? -ne 0 ]; then
+    echo "index.js文件写入失败，请以root身份运行。"
+    $(clean)
+    exit 1
+fi
+
+$(clean)
+chmod +x "$target_folder/napcat/napcat.sh"
+echo "安装完成 输入 xvfb-run qq --enable-logging 启动"
+echo "保持后台运行 请输入 nohup xvfb-run qq --enable-logging > nul 2> nul &"
+echo "后台快速登录 请输入 nohup xvfb-run qq --enable-logging -q QQ号码 > nul 2> nul &"
