@@ -345,7 +345,7 @@ if [ "$usr_createUser" = "y" ]; then
 else
     echo "如果当前登录的是root账户，请输入 su - 用户名 切换到 非root 用户后再执行启动命令。"
 fi
-echo -e "\n安装完成，请输入 xvfb-run qq --enable-logging 命令启动。"
-echo "保持后台运行 请输入 nohup xvfb-run qq --enable-logging > nul 2> nul &"
-echo "后台快速登录 请输入 nohup xvfb-run qq --enable-logging -q QQ号码 > nul 2> nul &"
+echo -e "\n安装完成，请输入 xvfb-run qq --no-sandbox 命令启动。"
+echo "保持后台运行 请输入 nohup xvfb-run qq --no-sandbox > nul 2> nul &"
+echo "后台快速登录 请输入 nohup xvfb-run qq --no-sandbox -q QQ号码 > nul 2> nul &"
 echo "注意，如当前登录的是非root用户且使用了后台运行命令，请在结束SSH终端前使用exit退出登录。"
