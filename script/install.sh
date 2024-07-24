@@ -192,11 +192,11 @@ echo "QQ下载链接：$qq_download_url"
 # 没有完成强制安装
 if [ "$package_installer" = "rpm" ]; then
     curl -L "$qq_download_url" -o QQ.rpm
-    rpm -Uvh ./QQ.rpm
+    sudo rpm -Uvh ./QQ.rpm
     rm QQ.rpm
  elif [ "$package_installer" = "dpkg" ]; then
     curl -L "$qq_download_url" -o QQ.deb
-    dpkg -i QQ.deb
+    sudo dpkg -i QQ.deb
     rm QQ.deb
 fi
 
@@ -254,12 +254,12 @@ else
             echo "$default_file 成功下载。"
         else
             echo "文件更名失败，请检查错误。"
-            $(clean)
+            clean
             exit 1
         fi
     else
         echo "文件下载失败，请检查错误。"
-        $(clean)
+        clean
         exit 1
     fi
 fi
@@ -267,37 +267,86 @@ fi
 unzip -q -o -d ./tmp NapCat.linux.zip
 if [ $? -ne 0 ]; then
     echo "文件解压失败，请检查错误。"
-    $(clean)
+    clean
     exit 1
 fi
 
 target_folder="/opt/QQ/resources/app/app_launcher"
-mkdir "$target_folder/napcat/"
+sudo mkdir "$target_folder/napcat/"
 
 if [ "$system_arch" = "amd64" ]; then
-    mv -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
+    sudo mv -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
 elif [ "$system_arch" = "arm64" ]; then
-    mv -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
+    sudo mv -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
 fi
 if [ $? -ne 0 -a $? -ne 1 ]; then
     echo "文件移动失败，请以root身份运行。"
-    $(clean)
+    clean
     exit 1
 fi
 
-chmod -R 777 "$target_folder/napcat/"
-mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
-output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--enable-logging');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\"file://\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
-echo "$output_index_js" > "$target_folder/index.js"
+sudo chmod -R 777 "$target_folder/napcat/"
+sudo mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
+output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--enable-logging');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
+sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
 
 if [ $? -ne 0 ]; then
     echo "index.js文件写入失败，请以root身份运行。"
-    $(clean)
+    clean
     exit 1
 fi
 
-$(clean)
-chmod +x "$target_folder/napcat/napcat.sh"
-echo "安装完成 输入 xvfb-run qq --enable-logging 启动"
+clean
+sudo chmod +x "$target_folder/napcat/napcat.sh"
+
+createUser() {
+    # 询问用户输入用户名和密码
+    while true; do
+        echo "请输入用户名(默认为napcat)："
+        read -r usr_name
+        echo "请输入密码（默认无密码）："
+        read -s usr_pwd
+        echo "请再次输入密码（默认无密码）："
+        read -s usr_pwd2
+        if [ "$usr_pwd" != "$usr_pwd2" ]; then
+            echo "两次密码输入不一致，请重新输入。"
+        else
+            if [ -z "$usr_name" ]; then
+                usr_name="napcat"
+            fi
+            if [ -z "$usr_pwd" ]; then
+                echo "创建用户: $usr_name，无密码。"
+            else
+                echo "创建用户: $usr_name，密码: $usr_pwd。"
+            fi
+            break
+        fi
+    done
+    # 检查是否已经存在名为 napcat 的用户
+    if id "$usr_name" &>/dev/null; then
+        echo "用户 $usr_name 已存在，跳过创建用户步骤。"
+        return
+    fi
+    # 创建用户并设置密码
+    encry_pwd=$(openssl passwd -1 "$usr_pwd")
+    sudo useradd -m -p "$encry_pwd" "$usr_name"
+    if [ $? -ne 0 ]; then
+        echo "用户创建失败，请检查错误。"
+        exit 1
+    fi
+}
+
+# 询问用户是否创建非root用户
+echo "是否创建非root用户？(y/n)"
+echo "如果你只有root用户，请输入y。"
+read -r usr_createUser
+if [ "$usr_createUser" = "y" ]; then
+    createUser
+    echo "如果当前登录的是root账户，请输入 su - $usr_name 切换到 $usr_name 用户后再执行启动命令。"
+else
+    echo "如果当前登录的是root账户，请输入 su - 用户名 切换到 非root 用户后再执行启动命令。"
+fi
+echo -e "\n安装完成，请输入 xvfb-run qq --enable-logging 命令启动。"
 echo "保持后台运行 请输入 nohup xvfb-run qq --enable-logging > nul 2> nul &"
 echo "后台快速登录 请输入 nohup xvfb-run qq --enable-logging -q QQ号码 > nul 2> nul &"
+echo "注意，如当前登录的是非root用户且使用了后台运行命令，请在结束SSH终端前使用exit退出登录。"
