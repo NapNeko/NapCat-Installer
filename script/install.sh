@@ -331,8 +331,7 @@ createUser() {
     encry_pwd=$(openssl passwd -1 "$usr_pwd")
     sudo useradd -m -p "$encry_pwd" "$usr_name"
     if [ $? -ne 0 ]; then
-        echo "用户创建失败，请检查错误。"
-        exit 1
+        echo "用户创建失败，请自行创建新用户。"
     fi
 }
 
