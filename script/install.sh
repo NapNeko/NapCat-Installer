@@ -299,53 +299,7 @@ fi
 clean
 sudo chmod +x "$target_folder/napcat/napcat.sh"
 
-createUser() {
-    # 询问用户输入用户名和密码
-    while true; do
-        echo "请输入用户名(默认为napcat)："
-        read -r usr_name
-        echo "请输入密码（默认无密码）："
-        read -s usr_pwd
-        echo "请再次输入密码（默认无密码）："
-        read -s usr_pwd2
-        if [ "$usr_pwd" != "$usr_pwd2" ]; then
-            echo "两次密码输入不一致，请重新输入。"
-        else
-            if [ -z "$usr_name" ]; then
-                usr_name="napcat"
-            fi
-            if [ -z "$usr_pwd" ]; then
-                echo "创建用户: $usr_name，无密码。"
-            else
-                echo "创建用户: $usr_name，密码: $usr_pwd。"
-            fi
-            break
-        fi
-    done
-    # 检查是否已经存在名为 napcat 的用户
-    if id "$usr_name" &>/dev/null; then
-        echo "用户 $usr_name 已存在，跳过创建用户步骤。"
-        return
-    fi
-    # 创建用户并设置密码
-    encry_pwd=$(openssl passwd -1 "$usr_pwd")
-    sudo useradd -m -p "$encry_pwd" "$usr_name"
-    if [ $? -ne 0 ]; then
-        echo "用户创建失败，请自行创建新用户。"
-    fi
-}
-
-# 询问用户是否创建非root用户
-echo "是否创建非root用户？(y/n)"
-echo "如果你只有root用户，请输入y。"
-read -r usr_createUser
-if [ "$usr_createUser" = "y" ]; then
-    createUser
-    echo "如果当前登录的是root账户，请输入 su - $usr_name 切换到 $usr_name 用户后再执行启动命令。"
-else
-    echo "如果当前登录的是root账户，请输入 su - 用户名 切换到 非root 用户后再执行启动命令。"
-fi
 echo -e "\n安装完成，请输入 xvfb-run qq --no-sandbox 命令启动。"
 echo "保持后台运行 请输入 nohup xvfb-run qq --no-sandbox > nul 2> nul &"
 echo "后台快速登录 请输入 nohup xvfb-run qq --no-sandbox -q QQ号码 > nul 2> nul &"
-echo "注意，如当前登录的是非root用户且使用了后台运行命令，请在结束SSH终端前使用exit退出登录。"
+echo "注意，如使用了后台运行命令，请在结束SSH终端前使用exit退出登录。"
