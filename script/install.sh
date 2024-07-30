@@ -275,9 +275,9 @@ target_folder="/opt/QQ/resources/app/app_launcher"
 sudo mkdir "$target_folder/napcat/"
 
 if [ "$system_arch" = "amd64" ]; then
-    sudo mv -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
+    sudo cp -r -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
 elif [ "$system_arch" = "arm64" ]; then
-    sudo mv -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
+    sudo cp -r -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
 fi
 if [ $? -ne 0 -a $? -ne 1 ]; then
     echo "文件移动失败，请以root身份运行。"
