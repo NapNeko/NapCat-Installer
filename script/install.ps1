@@ -149,5 +149,5 @@ Write-Host "Install Success!"
 $result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
 if ($result -eq "Yes") {
     Set-Location ./NapCatQQ
-    ./napcat-utf8.bat
+    powershell -ExecutionPolicy ByPass -File ./BootWay05.ps1
 }
