@@ -201,6 +201,7 @@ if [ "$package_manager" = "yum" ]; then
     sudo apt install -f -y ./QQ.deb
     # QQ自己声明的依赖不全...需要手动补全
     sudo apt install -y libnss3
+    sudo apt install -y libgbm1
     # Ubuntu24.04开始libasound2已不存在, 这里偷懒尝试俩都装
     sudo apt install -y libasound2
     sudo apt install -y libasound2t64
