@@ -161,6 +161,8 @@ if [ "$package_manager" = "apt" ]; then
     sudo apt update -y
     sudo apt install -y zip unzip jq curl xvfb screen
 elif [ "$package_manager" = "yum" ]; then
+    # 安装epel, 因为某些包在自带源里缺失
+    sudo yum install -y epel-release
     sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen
 else
     echo "包管理器检查失败，目前仅支持apt/yum。"
