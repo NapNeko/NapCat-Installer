@@ -88,11 +88,8 @@ if ! command -v sudo &> /dev/null; then
 	exit 1
 fi
 
-# 保证 curl/wget apt/rpm 基础环境
-echo "检测包管理器..."
-
 if [[ -z $use_docker ]]; then
-    # 询Docker安装询问
+    # Docker安装询问
     echo "是否使用Docker安装？(y/n)"
     read -r use_docker
 fi
@@ -154,16 +151,20 @@ if [ "$system_arch" = "none" ]; then
     echo "无法识别的系统架构，请检查错误。"
     exit 1
 fi
-
 echo "当前系统架构：$system_arch"
 
+# 保证 curl/wget apt/rpm 基础环境
+echo "检测包管理器..."
 package_manager=$(detect_package_manager)
-# 开始安装依赖
-if [ "$package_manager" = "apt" ];then
+# 开始安装基础依赖
+if [ "$package_manager" = "apt" ]; then
     sudo apt update -y
-    sudo apt install -y libgbm1 libasound2 zip unzip jq curl xvfb
+    sudo apt install -y zip unzip jq curl xvfb
+elif [ "$package_manager" = "yum" ]; then
+    sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb
 else
-    sudo yum install -y libgbm alsa-lib-devel nss dbus-libs at-spi2-atk gtk3 cups-libs zip unzip jq curl xvfb
+    echo "包管理器检查失败，目前仅支持apt/yum。"
+    exit 1
 fi
 
 qq_download_url=""
@@ -189,15 +190,18 @@ if [ "$qq_download_url" = "" ]; then
 fi
 echo "QQ下载链接：$qq_download_url"
 
-# 没有完成强制安装
-if [ "$package_installer" = "rpm" ]; then
+# TODO: 优化QQ包依赖
+# 鉴于QQ似乎仍在变动linux包的依赖, 所以目前暂时安装所有QQ认为其自身所需的依赖以尽力保证脚本正常工作
+if [ "$package_manager" = "yum" ]; then
     curl -L "$qq_download_url" -o QQ.rpm
-    sudo rpm -Uvh ./QQ.rpm
-    rm QQ.rpm
- elif [ "$package_installer" = "dpkg" ]; then
+    sudo yum localinstall -y ./QQ.rpm
+    rm -f QQ.rpm
+ elif [ "$package_manager" = "apt" ]; then
     curl -L "$qq_download_url" -o QQ.deb
-    sudo dpkg -i QQ.deb
-    rm QQ.deb
+    sudo apt install -f -y ./QQ.deb
+    # QQ自己声明的依赖不全...需要手动补全
+    sudo apt install -y libasound2
+    rm -f QQ.deb
 fi
 
 napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
