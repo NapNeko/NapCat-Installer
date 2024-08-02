@@ -159,9 +159,9 @@ package_manager=$(detect_package_manager)
 # 开始安装基础依赖
 if [ "$package_manager" = "apt" ]; then
     sudo apt update -y
-    sudo apt install -y zip unzip jq curl xvfb
+    sudo apt install -y zip unzip jq curl xvfb screen
 elif [ "$package_manager" = "yum" ]; then
-    sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb
+    sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen
 else
     echo "包管理器检查失败，目前仅支持apt/yum。"
     exit 1
@@ -303,7 +303,7 @@ fi
 clean
 sudo chmod +x "$target_folder/napcat/napcat.sh"
 
-echo -e "\n安装完成，请输入 xvfb-run qq --no-sandbox 命令启动。"
-echo "保持后台运行 请输入 nohup xvfb-run qq --no-sandbox > nul 2> nul &"
-echo "后台快速登录 请输入 nohup xvfb-run qq --no-sandbox -q QQ号码 > nul 2> nul &"
-echo "注意，如使用了后台运行命令，请在结束SSH终端前使用exit退出登录。"
+echo -e "\n安装完成，请输入 xvfb-run -a qq --no-sandbox 命令启动。"
+echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
+echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
+echo "注意，您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
