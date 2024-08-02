@@ -200,7 +200,7 @@ if [ "$package_manager" = "yum" ]; then
     curl -L "$qq_download_url" -o QQ.deb
     sudo apt install -f -y ./QQ.deb
     # QQ自己声明的依赖不全...需要手动补全
-    sudo apt install -y libasound2
+    sudo apt install -y libasound2 libnss3
     rm -f QQ.deb
 fi
 
