@@ -2,7 +2,7 @@
 NapCat 启动!
 
 ## 使用
-### Linux
+### Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9)
 在需要的文件夹 执行此代码 稍等片刻即可运行
 ```bat
 curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.sh && sudo bash napcat.sh
