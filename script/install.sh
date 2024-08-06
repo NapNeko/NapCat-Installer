@@ -310,7 +310,7 @@ install_napcat() {
         exit 1
     fi
 
-    if [ ! -d "$target_folder" ]; then
+    if [ ! -d "$target_folder/napcat" ]; then
         sudo mkdir "$target_folder/napcat/"
     fi
 
