@@ -22,6 +22,10 @@ while [[ $# -ge 1 ]]; do
             shift
             confirm="y"
             ;;
+        --force)
+            shift
+            force="y"
+            ;;
         *)
             echo -ne " Usage: bash $0 --docker [y|n] --qq \"114514\" --mode [ws|reverse_ws|reverse_http] --confirm\n"
             exit 1;
@@ -154,7 +158,7 @@ fi
 echo "当前系统架构：$system_arch"
 
 # 保证 curl/wget apt/rpm 基础环境
-echo "检测包管理器..."
+echo "正在更新依赖..."
 package_manager=$(detect_package_manager)
 # 开始安装基础依赖
 if [ "$package_manager" = "apt" ]; then
@@ -221,26 +225,31 @@ package_name="linuxqq"
 package_targetVer="3.2.12-26702"
 package_installer=$(detect_package_installer)
 
-echo "目标linuxqq版本：$package_targetVer"
-if [ "$package_installer" = "rpm" ]; then
-    if rpm -q $package_name &> /dev/null; then
-        version=$(rpm -q --queryformat '%{VERSION}' $package_name)
-        echo "$package_name 已安装，版本: $version"
-        if [ "$version" -ne "$package_targetVer" ]; then
+echo "目标linuxQQ版本：$package_targetVer"
+if [ "$force" = "y" ]; then
+    echo "强制重装模式..."
+    install_linuxqq
+else
+    if [ "$package_installer" = "rpm" ]; then
+        if rpm -q $package_name &> /dev/null; then
+            version=$(rpm -q --queryformat '%{VERSION}' $package_name)
+            echo "$package_name 已安装，版本: $version"
+            if [ "$version" -ne "$package_targetVer" ]; then
+                install_linuxqq
+            fi
+        else
             install_linuxqq
         fi
-    else
-        install_linuxqq
-    fi
-elif [ "$package_installer" = "dpkg" ]; then
-    if dpkg -s $package_name &> /dev/null; then
-        version=$(dpkg -s $package_name | grep Version | awk '{print $2}')
-        echo "$package_name 已安装，版本: $version"
-        if [ "$version" != "$package_targetVer" ]; then
+    elif [ "$package_installer" = "dpkg" ]; then
+        if dpkg -s $package_name &> /dev/null; then
+            version=$(dpkg -s $package_name | grep Version | awk '{print $2}')
+            echo "$package_name 已安装，版本: $version"
+            if [ "$version" != "$package_targetVer" ]; then
+                install_linuxqq
+            fi
+        else
             install_linuxqq
         fi
-    else
-        install_linuxqq
     fi
 fi
 
@@ -252,13 +261,13 @@ clean() {
     fi
     rm -rf ./NapCat.linux.zip
     if [ $? -ne 0 ]; then
-        echo "NapCat压缩包删除失败，请手动删除 $default_file。"
+        echo "NapCatQQ压缩包删除失败，请手动删除 $default_file。"
     fi
 }
 
 install_napcat() {
+    echo "安装NapCatQQ..."
     github_proxy="https://github.moeyy.xyz" # https://mirror.ghproxy.com
-    
     napcat_download_url=""
     #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.arm64.zip
     #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.x64.zip
@@ -303,17 +312,19 @@ install_napcat() {
         fi
     fi
 
+    echo "正在解压 $default_file..."
     unzip -q -o -d ./tmp NapCat.linux.zip
     if [ $? -ne 0 ]; then
         echo "文件解压失败，请检查错误。"
         clean
         exit 1
     fi
-
+    
     if [ ! -d "$target_folder/napcat" ]; then
         sudo mkdir "$target_folder/napcat/"
     fi
 
+    echo "正在移动文件..."
     if [ "$system_arch" = "amd64" ]; then
         sudo cp -r -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
     elif [ "$system_arch" = "arm64" ]; then
@@ -326,6 +337,7 @@ install_napcat() {
     fi
 
     sudo chmod -R 777 "$target_folder/napcat/"
+    echo "正在修补文件..."
     sudo mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
     output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--no-sandbox');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
     sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
@@ -338,22 +350,28 @@ install_napcat() {
     clean
 }
 
-napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
-if [ "$napcat_version" = "" ]; then
-    echo "无法获取NapCat版本，请检查错误。"
+# napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
+napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
+if [ -z $napcat_version ]; then
+    echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
 fi
 
-echo "最新NapCat版本：$napcat_version"
+echo "最新NapCatQQ版本：$napcat_version"
 target_folder="/opt/QQ/resources/app/app_launcher"
-if [ -d "$target_folder/napcat" ]; then
-    current_version=$(jq -r '.version' "$target_folder/napcat/package.json")
-    echo "NapCat 已安装，版本：v$current_version"
-    if [ "v$current_version" != "$napcat_version" ]; then
+if [ "$force" = "y" ]; then
+    echo "强制重装模式..."
+    install_napcat
+else
+    if [ -d "$target_folder/napcat" ]; then
+        current_version=$(jq -r '.version' "$target_folder/napcat/package.json")
+        echo "NapCatQQ已安装，版本：v$current_version"
+        if [ "v$current_version" != "$napcat_version" ]; then
+            install_napcat
+        fi
+    else
         install_napcat
     fi
-else
-    install_napcat
 fi
 
 echo -e "\n安装完成，请输入 xvfb-run -a qq --no-sandbox 命令启动。"
