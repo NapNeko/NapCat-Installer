@@ -8,6 +8,12 @@ NapCat 启动!
 curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.sh && sudo bash napcat.sh
 ```
 
+### Termux(存储空间占用~1.5GB)
+执行此代码 稍等片刻即可运行
+```bat
+curl -o napcat.termux.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.termux.sh && bash napcat.termux.sh
+```
+
 ### Windows11
 在需要的文件夹右键选择 `在终端中打开` 
 ![Open](https://github.com/NapNeko/NapCat-Installer/assets/61873808/1ceb84a5-0aed-4193-ac19-b0128299632d)
