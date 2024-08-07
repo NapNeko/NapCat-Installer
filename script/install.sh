@@ -92,6 +92,17 @@ if ! command -v sudo &> /dev/null; then
 	exit 1
 fi
 
+# 使用sudo id命令获取身份信息
+sudo_id_output=$(sudo id)
+
+# 检查输出中是否包含uid=0
+if [[ $sudo_id_output == *"uid=0"* ]]; then
+  echo "当前用户是root用户（uid=0），继续执行……"
+else
+  echo "当前用户不是root用户，请将此用户加入sudo group后再试。"
+  exit 1
+fi
+
 if [[ -z $use_docker ]]; then
     # Docker安装询问
     echo "是否使用Docker安装？(y/n)"
