@@ -25,6 +25,7 @@ apt clean && \
 rm -rf /tmp/* /var/lib/apt/lists"
 proot-distro sh napcat -- bash -c "$init_cmd"
 if [ $? -ne 0 ]; then
+    proot-distro remove napcat
     echo "napcat容器初始化失败。"
     exit 1
 fi
