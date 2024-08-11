@@ -4,16 +4,6 @@ Add-Type -AssemblyName System.Windows.Forms
 # Verify that types from both assemblies were loaded.
 [System.IO.Compression.ZipArchiveMode]; [IO.Compression.ZipFile]
 
-function Get-QQpath {
-    try {
-        $key = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\QQ"
-        $uninstallString = $key.UninstallString
-        return [System.IO.Path]::GetDirectoryName($uninstallString) + "\QQ.exe"
-    }
-    catch {
-        throw "get QQ path error: $_"
-    }
-}
 function Get-QQDownloadUrl {
     #请求https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/windowsDownloadUrl.js获取返回文本 正则匹配 https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_64_[0-9]{2}\.exe
     try {
@@ -27,18 +17,24 @@ function Get-QQDownloadUrl {
         throw "get QQ download url error: $_"
     }
 }
+
 function Get-IsQQInstalled {
     try {
-        Get-QQpath
-        return $true
+        $key = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\QQ" -ErrorAction SilentlyContinue
+        if ($null -eq $key) {
+            return $false
+        }
+        return Test-Path ([System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($key.UninstallString), "QQ.exe"))
     }
     catch {
         return $false
     }
 }
+
 function Install-QQ {
     try {
-        $QQInstallerUrl = Get-QQDownloadUrl
+        # $QQInstallerUrl = Get-QQDownloadUrl
+        $QQInstallerUrl = "https://dldir1.qq.com/qqfile/qq/QQNT/9645d790/QQ9.9.15.26702_x64.exe"
         $QQInstallerPath = "$env:TEMP\QQInstaller.exe"
         Invoke-WebRequest -Uri $QQInstallerUrl -OutFile $QQInstallerPath
         Start-Process -FilePath $QQInstallerPath -ArgumentList "/s" -Wait
@@ -49,6 +45,22 @@ function Install-QQ {
     }
     return Get-IsQQInstalled
 }
+
+# https://stackoverflow.com/questions/77508119/npm-run-dev-shows-error-return-process-dlopenmodule-path-tonamespacedpathf
+function Install-VCREDIST {
+    try {
+        $VCREDISTInstallerUrl = "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+        $VCREDISTInstallerPath = "$env:TEMP\vc_redist.x64.exe"
+        Invoke-WebRequest -Uri $VCREDISTInstallerUrl -OutFile $VCREDISTInstallerPath
+        Start-Process -FilePath $VCREDISTInstallerPath -ArgumentList "/install", "/quiet", "/norestart" -Wait
+        Remove-Item -Path $VCREDISTInstallerPath -Force
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function Get-RemoteNapCatVersion {
     [CmdletBinding()]
     param(
@@ -87,17 +99,20 @@ function Get-RemoteNapCatVersion {
         }
     }
 }
-$isQQInstalled = Get-IsQQInstalled
 
 # 用于检测是否安装QQ
+$isQQInstalled = Get-IsQQInstalled
 if (!$isQQInstalled) {
     $result = [System.Windows.Forms.MessageBox]::Show("Install QQ?", "HInt", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
-    if ($result -eq "OK") {
-        $QQInstallPath = $folderBrowserDialog.SelectedPath
-        if ($QQInstallPath -eq "") {
-            Write-Host "Install QQ canceled."
-            exit
+    if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+        $QQInstallPath = "C:\Program Files\Tencent\QQNT"
+        [System.Windows.Forms.Application]::EnableVisualStyles()
+        $folderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{Description='Select QQ Install Path, Cancel to use default path'}
+        $result = $folderBrowserDialog.ShowDialog()
+        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+            $QQInstallPath = $folderBrowserDialog.SelectedPath
         }
+        Write-Host "QQ Path: $QQInstallPath"
         # 将安装目录写入 HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Tencent\QQNT 的Install键（string） 注册表
         $registryPath = "HKLM:\SOFTWARE\WOW6432Node\Tencent\QQNT"
         $registryKey = "Install"
@@ -106,7 +121,7 @@ if (!$isQQInstalled) {
             New-Item -Path $registryPath -Force | Out-Null
         }
         if (!(Test-Path "$registryPath\$registryKey")) {
-            New-ItemProperty -Path $registryPath -Name $registryKey -Value $registryValue-PropertyType String -Force | Out-Null
+            New-ItemProperty -Path $registryPath -Name $registryKey -Value $registryValue -PropertyType String -Force | Out-Null
         }
         Write-Host "Please Wait ..."
         $isInstalled = Install-QQ
@@ -115,11 +130,30 @@ if (!$isQQInstalled) {
             exit
         }
         else {
-            Write-Host "Install QQ canceled."
-            exit
+            Write-Host "Install QQ Successed."
         }
+
+        Write-Host "Install Microsoft Visual C++ Redistributable (x64)"
+        $isVCREDISTInstalled = Install-VCREDIST
+        if (!$isVCREDISTInstalled) {
+            Write-Host "Microsoft Visual C++ Redistributable (x64) Install Failed! napcat may not work properly!!"
+        }
+        # 看起来似乎库装上去也没用, 需要再手动开启下QQ??
+        Write-Host "Try to boot qq once to fix issue??"
+        try {
+            $QQProcess = Start-Process "$QQInstallPath\QQ.exe" -PassThru
+            Write-Host "QQ.exe will automatically exit in 15 seconds."
+            Start-Sleep -Seconds 10
+            Stop-Process -Id $QQProcess.Id
+        }
+        catch {
+            Write-Host "Try to auto fix failed, if you meet 'Error: The specified module could not be found.', please manual open once qq."
+        }
+    } else {
+        Write-Host "Install QQ canceled."
     }
 }
+
 # 获取远程版本号
 $remoteVersion = Get-RemoteNapCatVersion
 if ($null -eq $remoteVersion) {
@@ -145,9 +179,10 @@ try {
 Get-ChildItem -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
 Remove-Item -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse -Force
 Write-Host "Install Success!"
-# 询问是否启动 ./NapCatQQ/napcat-utf8.bat
+
+# 询问是否启动 napcatqq
 $result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
-if ($result -eq "Yes") {
+if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
     Set-Location ./NapCatQQ
     powershell -ExecutionPolicy ByPass -File ./BootWay05.ps1
 }
