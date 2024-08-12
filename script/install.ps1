@@ -65,7 +65,7 @@ function Get-RemoteNapCatVersion {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory=$false, Position=0)]
-        [string]$url = "https://fastly.jsdelivr.net/gh/NapNeko/NapCatQQ@main/package.json"
+        [string]$url = "https://nclatest.znin.net/"
     )
 
     begin {
@@ -86,12 +86,12 @@ function Get-RemoteNapCatVersion {
             }
 
             $json = $response.Content | ConvertFrom-Json
-            # 验证JSON是否包含version属性
-            if (-not ($json -and $json.version)) {
-                throw "The JSON content at '$url' does not contain a valid 'version' property."
+            # 验证JSON是否包含tag_name属性
+            if (-not ($json -and $json.tag_name)) {
+                throw "The JSON content at '$url' does not contain a valid 'tag_name' property."
             }
 
-            return $json.version
+            return $json.tag_name
         }
         catch [System.Net.WebException], [System.Management.Automation.PSInvocationException] {
             # 处理可能的网络异常和JSON解析异常
@@ -127,7 +127,7 @@ if (!$isQQInstalled) {
         $isInstalled = Install-QQ
         if (!$isInstalled) {
             Write-Host "Install QQ failed."
-            exit
+            exit 1
         }
         else {
             Write-Host "Install QQ Successed."
@@ -154,15 +154,19 @@ if (!$isQQInstalled) {
     }
 }
 
+if (Test-Path -Path "./NapCatQQ/" -PathType Container) {
+    Write-Host "NapCat path already exists!"
+    exit 1
+}
 # 获取远程版本号
 $remoteVersion = Get-RemoteNapCatVersion
 if ($null -eq $remoteVersion) {
     Write-Host "Get remote version failed."
-    exit
+    exit 1
 }
 Write-Host "Remote Version: $remoteVersion"
-#下载https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip 的zip
-$url = "https://mirror.ghproxy.com/https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.win32.x64.zip"
+#下载https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.Shell.zip
+$url = "https://mirror.ghproxy.com/https://github.com/NapNeko/NapCatQQ/releases/download/$remoteVersion/NapCat.Shell.zip"
 try {
     Write-Host "Wait ..."
     $response = Invoke-WebRequest -Uri $url -UseBasicParsing
@@ -173,11 +177,11 @@ try {
     Remove-Item -Path $zipFile -Force
 }catch{
     Write-Host "Download failed. $_"
-    exit
+    exit 1
 }
-# 移动./NapCatQQ/NapCat.win32.x64/内所有文件到./NapCatQQ/
-Get-ChildItem -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
-Remove-Item -Path "./NapCatQQ/NapCat.win32.x64/" -Recurse -Force
+# 移动./NapCatQQ/NapCat.Shell/内所有文件到./NapCatQQ/
+Get-ChildItem -Path "./NapCatQQ/NapCat.Shell/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
+Remove-Item -Path "./NapCatQQ/NapCat.Shell/" -Recurse -Force
 Write-Host "Install Success!"
 
 # 询问是否启动 napcatqq

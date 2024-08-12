@@ -270,7 +270,7 @@ clean() {
     if [ $? -ne 0 ]; then
         echo "临时文件删除失败，请手动删除 $default_file。"
     fi
-    rm -rf ./NapCat.linux.zip
+    rm -rf ./NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         echo "NapCatQQ压缩包删除失败，请手动删除 $default_file。"
     fi
@@ -279,19 +279,9 @@ clean() {
 install_napcat() {
     echo "安装NapCatQQ..."
     github_proxy="https://github.moeyy.xyz" # https://mirror.ghproxy.com
-    napcat_download_url=""
-    #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.arm64.zip
-    #https://github.com/NapNeko/NapCatQQ/releases/download/v1.4.0/NapCat.linux.x64.zip
-    if [ "$system_arch" = "amd64" ]; then
-        napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.x64.zip"
-    elif [ "$system_arch" = "arm64" ]; then
-        napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.linux.arm64.zip"
-    else 
-        echo "无法下载NapCatQQ，请检查错误。"
-        exit 1
-    fi
+    napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
 
-    default_file="NapCat.linux.zip"
+    default_file="NapCat.Shell.zip"
     echo "NapCatQQ下载链接：$napcat_download_url"
     curl -L "$napcat_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
@@ -324,7 +314,7 @@ install_napcat() {
     fi
 
     echo "正在解压 $default_file..."
-    unzip -q -o -d ./tmp NapCat.linux.zip
+    unzip -q -o -d ./tmp NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         echo "文件解压失败，请检查错误。"
         clean
@@ -336,11 +326,7 @@ install_napcat() {
     fi
 
     echo "正在移动文件..."
-    if [ "$system_arch" = "amd64" ]; then
-        sudo cp -r -f ./tmp/NapCat.linux.x64/* "$target_folder/napcat/"
-    elif [ "$system_arch" = "arm64" ]; then
-        sudo cp -r -f ./tmp/NapCat.linux.arm64/* "$target_folder/napcat/"
-    fi
+    sudo cp -r -f ./tmp/NapCat.Shell/* "$target_folder/napcat/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
         echo "文件移动失败，请以root身份运行。"
         clean
