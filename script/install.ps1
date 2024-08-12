@@ -182,6 +182,7 @@ try {
 # 移动./NapCatQQ/NapCat.Shell/内所有文件到./NapCatQQ/
 Get-ChildItem -Path "./NapCatQQ/NapCat.Shell/" -Recurse | Move-Item -Destination "./NapCatQQ/" -Force
 Remove-Item -Path "./NapCatQQ/NapCat.Shell/" -Recurse -Force
+Write-Host "Napcat Path: ./NapCatQQ/"
 Write-Host "Install Success!"
 
 # 询问是否启动 napcatqq

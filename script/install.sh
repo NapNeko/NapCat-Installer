@@ -374,4 +374,5 @@ fi
 echo -e "\n安装完成，请输入 xvfb-run -a qq --no-sandbox 命令启动。"
 echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
 echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
+echo "Napcat安装位置 $target_folder/napcat"
 echo "注意，您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"

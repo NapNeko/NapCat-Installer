@@ -36,4 +36,5 @@ echo "保持后台运行 请输入 screen -dmS napcat bash -c 'proot-distro sh n
 echo "后台快速登录 请输入 screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"'"
 echo "进入容器内部 请输入 proot-distro login napcat"
 echo "容器数据位置 /data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/napcat"
+echo "Napcat安装位置(容器外真实路径) /data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/napcat/opt/QQ/resources/app/app_launcher/napcat"
 echo "注意，您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
