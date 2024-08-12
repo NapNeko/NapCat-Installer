@@ -36,3 +36,8 @@ $response = Invoke-WebRequest -Uri $url -UseBasicParsing
     [IO.File]::WriteAllBytes("./install.ps1", $response.Content)
 ```
 
+## 常见问题
+
+### screen无法上下自由滚动
+
+执行一次 `echo 'termcapinfo xterm* ti@:te@' >> ~/.screenrc` 即可(无需重复执行)
