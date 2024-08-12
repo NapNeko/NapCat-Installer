@@ -18,7 +18,7 @@ fi
 echo "正在初始化napcat容器..."
 init_cmd="apt update -y && \
 apt install -y sudo curl && \
-curl -o napcat.sh https://cdn.jsdelivr.net/gh/NapNeko/NapCat-Installer@main/script/install.sh && \
+curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && \
 sudo bash napcat.sh --docker n && \
 apt autoremove -y && \
 apt clean && \
