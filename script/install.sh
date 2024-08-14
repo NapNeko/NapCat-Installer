@@ -278,7 +278,7 @@ clean() {
 
 install_napcat() {
     echo "安装NapCatQQ..."
-    github_proxy="https://github.moeyy.xyz" # https://mirror.ghproxy.com
+    github_proxy="https://mirror.ghproxy.com" # https://mirror.ghproxy.com
     napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
 
     default_file="NapCat.Shell.zip"
