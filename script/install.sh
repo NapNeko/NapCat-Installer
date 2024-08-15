@@ -25,9 +25,16 @@ while [[ $# -ge 1 ]]; do
         --force)
             shift
             force="y"
+            shift
+            ;;
+        --proxy)
+            shift
+            proxy_num="$1"
+            shift
             ;;
         *)
-            echo -ne " Usage: bash $0 --docker [y|n] --qq \"114514\" --mode [ws|reverse_ws|reverse_http] --confirm\n"
+            echo -ne "Docker安装命令: bash $0 --docker [y|n] --qq \"114514\" --mode [ws|reverse_ws|reverse_http] --confirm --proxy [0|1|2|3|4|5|6]\n"
+            echo -ne "直接安装命令: bash $0 --docker n --proxy [0|1|2|3|4] --force\n"
             exit 1;
             ;;
     esac
@@ -38,13 +45,65 @@ get_system_arch() {
     echo $(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) 
 }
 
+# 函数：代理连通性测试
+network_test() {
+    local parm1=$1
+    local found=0
+    target_proxy=""
+    proxy_num=${proxy_num:-9}
+
+    if [ "$parm1" == "Github" ]; then
+        proxy_arr=("https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
+        check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
+    else
+        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "docker.agsv.top" "docker.registry.cyou")
+        check_url=""
+    fi
+
+    if [ ! -z "$proxy_num" ] && [ "$proxy_num" -ge 1 ] && [ "$proxy_num" -le ${#proxy_arr[@]} ]; then
+        echo "手动指定代理：${proxy_arr[$proxy_num-1]}"
+        target_proxy="${proxy_arr[$proxy_num-1]}"
+    else
+        if [ "$proxy_num" -ne 0 ]; then
+            echo "proxy 未指定或超出范围，正在检查${parm1}代理可用性..."
+            for proxy in "${proxy_arr[@]}"; do
+                status=$(curl -o /dev/null -s -w "%{http_code}" "$proxy/$check_url")
+                if [ "$parm1" == "Github" ] && [ $status -eq 200 ]; then
+                    found=1
+                    target_proxy="$proxy"
+                    echo "将使用${parm1}代理：$proxy"
+                    break
+                elif [ "$parm1" == "Docker" ] && ([ $status -eq 200 ] || [ $status -eq 301 ]); then
+                    found=1
+                    target_proxy="$proxy"
+                    echo "将使用${parm1}代理：$proxy"
+                    break
+                fi
+            done
+
+            if [ $found -eq 0 ]; then
+                echo "无法连接到${parm1}，请检查网络。"
+                exit 1
+            fi
+        else
+            echo "代理已关闭，将直接连接${parm1}..."
+        fi
+    fi
+    napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
+}
+
 # 函数：根据参数生成docker命令
 generate_docker_command() {
+    # 检查网络
+    network_test "Docker" > /dev/null 2>&1
+
     local qq=$1
     local mode=$2
-    docker_ws="docker run -d -e ACCOUNT=$qq -e WS_ENABLE=true -p 3001:3001 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
-    docker_reverse_ws="docker run -d -e ACCOUNT=$qq -e WSR_ENABLE=true -e WS_URLS='[]' --name napcat --restart=always mlikiowa/napcat-docker:latest"
-    docker_reverse_http="docker run -d -e ACCOUNT=$qq -e HTTP_ENABLE=true -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 --name napcat --restart=always mlikiowa/napcat-docker:latest"
+    docker_cmd1="sudo docker run -d -e ACCOUNT=$qq -e"
+    docker_cmd2="--name napcat --restart=always ${target_proxy:+${target_proxy}/}mlikiowa/napcat-docker:latest"
+    docker_ws="$docker_cmd1 WS_ENABLE=true -p 3001:3001 -p 6099:6099 $docker_cmd2"
+    docker_reverse_ws="$docker_cmd1 WSR_ENABLE=true -e WS_URLS='[]' $docker_cmd2"
+    docker_reverse_http="$docker_cmd1 HTTP_ENABLE=true -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 $docker_cmd2"
     if [ "$mode" = "ws" ]; then
         echo $docker_ws
     elif [ "$mode" = "reverse_ws" ]; then
@@ -110,7 +169,9 @@ if [[ -z $use_docker ]]; then
 fi
 if [ "$use_docker" = "y" ]; then
     if [ "$(check_docker)" = "false" ]; then
-         sudo curl -fsSL https://get.docker.com -o get-docker.sh
+         sudo apt update -y
+         sudo apt install -y curl
+         sudo curl -fsSL https://nclatest.znin.net/getdocker -o get-docker.sh
          sudo chmod +x get-docker.sh
          sudo sh get-docker.sh
     fi
@@ -136,7 +197,7 @@ if [ "$use_docker" = "y" ]; then
             echo "模式错误, 无法生成命令"
             confirm="n"
         else
-            echo "即将执行以下命令：$docker_command"
+            echo -e "即将执行以下命令：$docker_command\n"
         fi
         if [[ -z $confirm ]]; then
             read -p "是否继续？(y/n) " confirm
@@ -152,6 +213,10 @@ if [ "$use_docker" = "y" ]; then
         esac
     done
     eval "$docker_command"
+    if [ $? -ne 0 ]; then
+        echo "Docker启动失败，请检查错误。"
+        exit 1
+    fi
     echo "安装成功"
     exit 0
 elif [ "$use_docker" = "n" ]; then
@@ -187,22 +252,18 @@ fi
 install_linuxqq() {
     echo "安装LinuxQQ..."
     qq_download_url=""
-    #https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.8_240520_amd64_01.deb
+    qq_downGetUrl="https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408081656/linuxQQDownload.js"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/f74d4392/linuxqq_3.2.12-26702_x86_64.rpm"
-            #qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
+            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/f74d4392/linuxqq_3.2.12-26702_amd64.deb"
-            #qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
+            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
         fi
     elif [ "$system_arch" = "arm64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/f74d4392/linuxqq_3.2.12-26702_aarch64.rpm"
-            #qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
+            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/f74d4392/linuxqq_3.2.12-26702_arm64.deb"
-            #qq_download_url=$(curl -s https://cdn-go.cn/qq-web/im.qq.com_new/f2ff7664/rainbow/linuxQQDownload.js | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
+            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
         fi
     fi
 
@@ -215,12 +276,28 @@ install_linuxqq() {
     # TODO: 优化QQ包依赖
     # 鉴于QQ似乎仍在变动linux包的依赖, 所以目前暂时安装所有QQ认为其自身所需的依赖以尽力保证脚本正常工作
     if [ "$package_manager" = "yum" ]; then
-        curl -L "$qq_download_url" -o QQ.rpm
+        sudo curl -L "$qq_download_url" -o QQ.rpm
+        if [ $? -ne 0 ]; then
+            echo "文件下载失败，请检查错误。"
+            exit 1
+        fi
         sudo yum localinstall -y ./QQ.rpm
+        if [ $? -ne 0 ]; then
+            echo "QQ安装失败，请检查错误。"
+            exit 1
+        fi
         rm -f QQ.rpm
     elif [ "$package_manager" = "apt" ]; then
-        curl -L "$qq_download_url" -o QQ.deb
+        sudo curl -L "$qq_download_url" -o QQ.deb
+        if [ $? -ne 0 ]; then
+            echo "文件下载失败，请检查错误。"
+            exit 1
+        fi
         sudo apt install -f -y ./QQ.deb
+        if [ $? -ne 0 ]; then
+            echo "QQ安装失败，请检查错误。"
+            exit 1
+        fi
         # QQ自己声明的依赖不全...需要手动补全
         sudo apt install -y libnss3
         sudo apt install -y libgbm1
@@ -234,9 +311,10 @@ install_linuxqq() {
 # 检测是否已安装LinuxQQ
 package_name="linuxqq"
 package_targetVer="3.2.12-26702"
+target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
-echo "目标linuxQQ版本：$package_targetVer"
+echo "最低linuxQQ版本：$package_targetVer，构建：$target_build"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
     install_linuxqq
@@ -244,19 +322,27 @@ else
     if [ "$package_installer" = "rpm" ]; then
         if rpm -q $package_name &> /dev/null; then
             version=$(rpm -q --queryformat '%{VERSION}' $package_name)
-            echo "$package_name 已安装，版本: $version"
-            if [ "$version" -ne "$package_targetVer" ]; then
+            installed_build=${version##*-}
+            echo "$package_name 已安装，版本: $version，构建：$installed_build"
+            if (( installed_build < target_build )); then
+                echo "版本过低，需要更新。"
                 install_linuxqq
+            else
+                echo "版本已满足要求，无需更新。"
             fi
         else
             install_linuxqq
         fi
     elif [ "$package_installer" = "dpkg" ]; then
-        if dpkg -s $package_name &> /dev/null; then
-            version=$(dpkg -s $package_name | grep Version | awk '{print $2}')
-            echo "$package_name 已安装，版本: $version"
-            if [ "$version" != "$package_targetVer" ]; then
+        if dpkg -l | grep $package_name &> /dev/null; then
+            version=$(dpkg -l | grep "^ii" | grep "linuxqq" | awk '{print $3}')
+            installed_build=${version##*-}
+            echo "$package_name 已安装，版本: $version，构建：$installed_build"
+            if (( installed_build < target_build )); then
+                echo "版本过低，需要更新。"
                 install_linuxqq
+            else
+                echo "版本已满足要求，无需更新。"
             fi
         else
             install_linuxqq
@@ -264,6 +350,7 @@ else
     fi
 fi
 
+# 函数：清理临时文件
 clean() {
     rm -rf ./NapCat/
     rm -rf ./tmp/
@@ -276,14 +363,16 @@ clean() {
     fi
 }
 
+# 函数：安装NapCatQQ
 install_napcat() {
     echo "安装NapCatQQ..."
-    github_proxy="https://mirror.ghproxy.com" # https://mirror.ghproxy.com
-    napcat_download_url="$github_proxy/https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
+    
+    # 网络测试    
+    network_test "Github"
 
     default_file="NapCat.Shell.zip"
     echo "NapCatQQ下载链接：$napcat_download_url"
-    curl -L "$napcat_download_url" -o "$default_file"
+    sudo curl -L "$napcat_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
         echo "文件下载失败，请检查错误。"
         exit 1
@@ -311,6 +400,14 @@ install_napcat() {
             clean
             exit 1
         fi
+    fi
+
+    echo "正在验证 $default_file..."
+    unzip -t "$default_file" > /dev/null 2>&1
+    if [ $? -ne 0 ]; then
+        echo "文件验证失败，请检查错误。"
+        clean
+        exit 1
     fi
 
     echo "正在解压 $default_file..."
@@ -363,8 +460,13 @@ else
     if [ -d "$target_folder/napcat" ]; then
         current_version=$(jq -r '.version' "$target_folder/napcat/package.json")
         echo "NapCatQQ已安装，版本：v$current_version"
-        if [ "v$current_version" != "$napcat_version" ]; then
+        target_version=${napcat_version#v}
+        IFS='.' read -r i1 i2 i3 <<< "$current_version"
+        IFS='.' read -r t1 t2 t3 <<< "$target_version"
+        if (( i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3) )); then
             install_napcat
+        else
+            echo "已安装最新版本，无需更新。"
         fi
     else
         install_napcat
