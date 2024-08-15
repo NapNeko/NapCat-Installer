@@ -22,6 +22,11 @@ while [[ $# -ge 1 ]]; do
             shift
             confirm="y"
             ;;
+        --ncversion)
+            shift
+            napcat_version="$1"
+            shift
+            ;;
         --force)
             shift
             force="y"
@@ -445,7 +450,10 @@ install_napcat() {
 }
 
 # napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
-napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
+
+#napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
+# 如果存在版本号则直接使用 不存在则去拉取
+napcat_version=${napcat_version:-$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')}
 if [ -z $napcat_version ]; then
     echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
