@@ -411,7 +411,7 @@ install_napcat() {
     fi
 
     echo "正在解压 $default_file..."
-    unzip -q -o -d ./tmp NapCat.Shell.zip
+    unzip -q -o -d ./tmp/NapCat.Shell NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         echo "文件解压失败，请检查错误。"
         clean
