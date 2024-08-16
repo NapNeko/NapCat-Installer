@@ -310,7 +310,7 @@ install_linuxqq() {
 
 # 检测是否已安装LinuxQQ
 package_name="linuxqq"
-package_targetVer="3.2.12-26702"
+package_targetVer="3.2.12-26909"
 target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
