@@ -7,7 +7,7 @@ Add-Type -AssemblyName System.Windows.Forms
 function Get-QQDownloadUrl {
     #请求https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/windowsDownloadUrl.js获取返回文本 正则匹配 https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_64_[0-9]{2}\.exe
     try {
-        $url = "https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408081656/windowsDownloadUrl.js"
+        $url = "https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408201134/windowsDownloadUrl.js"
         $response = Invoke-WebRequest -Uri $url -UseBasicParsing
         $regex = "https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x64_[0-9]{2}\.exe"
         $downloadUrl = [regex]::Match($response.Content, $regex).Value
