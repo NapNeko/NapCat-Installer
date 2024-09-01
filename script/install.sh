@@ -251,19 +251,18 @@ fi
 
 install_linuxqq() {
     echo "安装LinuxQQ..."
-    qq_download_url=""
-    qq_downGetUrl="https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408201134/linuxQQDownload.js"
+    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/0724892e/linuxqq_3.2.12-27597"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x86_64_[0-9]{2}\.rpm')
+            qq_download_url="${base_url}_x86_64.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_amd64_[0-9]{2}\.deb')
+            qq_download_url="${base_url}_amd64.deb"
         fi
     elif [ "$system_arch" = "arm64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_aarch64_[0-9]{2}\.rpm')
+            qq_download_url="${base_url}_aarch64.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url=$(curl -s "$qq_downGetUrl" | grep -o -E 'https://dldir1\.qq\.com/qqfile/qq/QQNT/Linux/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_arm64_[0-9]{2}\.deb')
+            qq_download_url="${base_url}_arm64.deb"
         fi
     fi
 
@@ -310,7 +309,7 @@ install_linuxqq() {
 
 # 检测是否已安装LinuxQQ
 package_name="linuxqq"
-package_targetVer="3.2.12-27254"
+package_targetVer="3.2.12-27597"
 target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
