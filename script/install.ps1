@@ -181,10 +181,10 @@ if (!$isQQInstalled) {
     }
 }
 
-if (Test-Path -Path "./NapCatQQ/" -PathType Container) {
-    Write-Host "NapCat path already exists!"
-    exit 1
-}
+# if (Test-Path -Path "./NapCatQQ/" -PathType Container) {
+#     Write-Host "NapCat path already exists!"
+#     exit 1
+# }
 # 获取远程版本号
 $remoteVersion = Get-RemoteNapCatVersion
 if ($null -eq $remoteVersion) {
@@ -200,7 +200,7 @@ try {
     $zipFile = ".\NapCatQQ.zip"
     # 保存文件到当前目录
     [IO.File]::WriteAllBytes($zipFile, $response.Content)
-    Expand-Archive -Path "./NapCatQQ.zip" -DestinationPath "./NapCatQQ/"
+    Expand-Archive -Path "./NapCatQQ.zip" -DestinationPath "./NapCatQQ/" -Force
     Remove-Item -Path $zipFile -Force
 }catch{
     Write-Host "Download failed. $_"
@@ -208,7 +208,7 @@ try {
 }
 Write-Host "Napcat Path: ./NapCatQQ/"
 Write-Host "Install Success!"
-taskkill /f /im QQ.exe | Out-Null
+taskkill /f /im QQ.exe 2>$null | Out-Null
 # 询问是否启动 napcatqq
 $result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
 if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
