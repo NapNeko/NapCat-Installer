@@ -20,12 +20,31 @@ function Get-QQDownloadUrl {
 }
 
 function Get-IsQQInstalled {
+    param (
+        [version]$targetVersion,
+        [ref]$installPath
+    )
+    $currentVersion = $null
     try {
         $key = Get-ItemProperty -Path "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\QQ" -ErrorAction SilentlyContinue
         if ($null -eq $key) {
             return $false
         }
-        return Test-Path ([System.IO.Path]::Combine([System.IO.Path]::GetDirectoryName($key.UninstallString), "QQ.exe"))
+        if (-not [version]::TryParse($key.DisplayVersion, [ref]$currentVersion)) {
+            return $false
+        }
+        $uninstallPath = $key.UninstallString
+        if ($uninstallPath) {
+            $installPath.Value = [System.IO.Path]::GetDirectoryName($uninstallPath)
+            $exePath = [System.IO.Path]::Combine($installPath.Value, "QQ.exe")
+            if (Test-Path $exePath) {
+                if ($currentVersion -lt $targetVersion) {
+                    return $false
+                }
+                return $true
+            }
+        }
+        return $false
     }
     catch {
         return $false
@@ -43,7 +62,7 @@ function Install-QQ {
     catch {
         return $false
     }
-    return Get-IsQQInstalled
+    return Get-IsQQInstalled -targetVersion $targetVersion -installPath ([ref]$QQInstallPath)
 }
 
 # https://stackoverflow.com/questions/77508119/npm-run-dev-shows-error-return-process-dlopenmodule-path-tonamespacedpathf
@@ -101,29 +120,39 @@ function Get-RemoteNapCatVersion {
 }
 
 # 用于检测是否安装QQ
-$isQQInstalled = Get-IsQQInstalled
+$targetVersion = "9.9.15.27597"
+$QQInstallPath = ""
+$isQQInstalled = Get-IsQQInstalled -targetVersion $targetVersion -installPath ([ref]$QQInstallPath)
 if (!$isQQInstalled) {
-    $result = [System.Windows.Forms.MessageBox]::Show("Install QQ?", "HInt", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
-    if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
-        $QQInstallPath = "C:\Program Files\Tencent\QQNT"
-        [System.Windows.Forms.Application]::EnableVisualStyles()
-        $folderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{Description='Select QQ Install Path, Cancel to use default path'}
-        $result = $folderBrowserDialog.ShowDialog()
-        if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
-            $QQInstallPath = $folderBrowserDialog.SelectedPath
+    $next = $true
+    if ($QQInstallPath -eq "") {
+        $result = [System.Windows.Forms.MessageBox]::Show("Install QQ?", "HInt", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+        if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
+            $QQInstallPath = "C:\Program Files\Tencent\QQNT"
+            [System.Windows.Forms.Application]::EnableVisualStyles()
+            $folderBrowserDialog = New-Object System.Windows.Forms.FolderBrowserDialog -Property @{Description='Select QQ Install Path, Cancel to use default path'}
+            $result = $folderBrowserDialog.ShowDialog()
+            if ($result -eq [System.Windows.Forms.DialogResult]::OK) {
+                $QQInstallPath = $folderBrowserDialog.SelectedPath
+            }
+            Write-Host "QQ Path: $QQInstallPath"
+            # 将安装目录写入 HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Tencent\QQNT 的Install键（string） 注册表
+            $registryPath = "HKLM:\SOFTWARE\WOW6432Node\Tencent\QQNT"
+            $registryKey = "Install"
+            $registryValue = $QQInstallPath
+            if (!(Test-Path $registryPath)) {
+                New-Item -Path $registryPath -Force | Out-Null
+            }
+            if (!(Test-Path "$registryPath\$registryKey")) {
+                New-ItemProperty -Path $registryPath -Name $registryKey -Value $registryValue -PropertyType String -Force | Out-Null
+            }
+        } else {
+            $next = $false
+            Write-Host "Install QQ canceled."
         }
-        Write-Host "QQ Path: $QQInstallPath"
-        # 将安装目录写入 HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Tencent\QQNT 的Install键（string） 注册表
-        $registryPath = "HKLM:\SOFTWARE\WOW6432Node\Tencent\QQNT"
-        $registryKey = "Install"
-        $registryValue = $QQInstallPath
-        if (!(Test-Path $registryPath)) {
-            New-Item -Path $registryPath -Force | Out-Null
-        }
-        if (!(Test-Path "$registryPath\$registryKey")) {
-            New-ItemProperty -Path $registryPath -Name $registryKey -Value $registryValue -PropertyType String -Force | Out-Null
-        }
-        Write-Host "Please Wait ..."
+    }
+    if ($next) {
+        Write-Host "Install QQ, Please Wait ..."
         $isInstalled = Install-QQ
         if (!$isInstalled) {
             Write-Host "Install QQ failed."
@@ -149,8 +178,6 @@ if (!$isQQInstalled) {
         catch {
             Write-Host "Try to auto fix failed, if you meet 'Error: The specified module could not be found.', please manual open once qq."
         }
-    } else {
-        Write-Host "Install QQ canceled."
     }
 }
 
@@ -181,7 +208,7 @@ try {
 }
 Write-Host "Napcat Path: ./NapCatQQ/"
 Write-Host "Install Success!"
-taskkill /f /im QQ.exe
+taskkill /f /im QQ.exe | Out-Null
 # 询问是否启动 napcatqq
 $result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
 if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
