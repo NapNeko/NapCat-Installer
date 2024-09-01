@@ -249,6 +249,22 @@ else
     exit 1
 fi
 
+update_linuxqq_config() {
+    echo "正在更新QQ配置..."
+    # 查找用户的QQ配置文件
+    confs=$(sudo find /home -name "config.json" -path "*/.config/QQ/versions/*" 2>/dev/null)
+    if [ -f /root/.config/QQ/versions/config.json ]; then
+        confs="/root/.config/QQ/versions/config.json $confs"
+    fi
+    # 遍历配置文件并进行修改
+    for conf in $confs; do
+        echo "正在修改 $conf..."
+        sudo jq --arg targetVer "$package_targetVer" --arg buildId "$target_build" \
+        '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "$conf" > "$conf.tmp" && \
+        sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败！"; exit 1; }
+    done
+}
+
 install_linuxqq() {
     echo "安装LinuxQQ..."
     base_url="https://dldir1.qq.com/qqfile/qq/QQNT/0724892e/linuxqq_3.2.12-27597"
@@ -305,6 +321,7 @@ install_linuxqq() {
         # sudo apt install -y libasound2t64
         rm -f QQ.deb
     fi
+    update_linuxqq_config
 }
 
 # 检测是否已安装LinuxQQ
