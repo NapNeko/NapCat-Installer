@@ -10,7 +10,8 @@ function Get-QQDownloadUrl {
         $url = "https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408201134/windowsDownloadUrl.js"
         $response = Invoke-WebRequest -Uri $url -UseBasicParsing
         $regex = "https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x64_[0-9]{2}\.exe"
-        $downloadUrl = [regex]::Match($response.Content, $regex).Value
+        #$downloadUrl = [regex]::Match($response.Content, $regex).Value
+        $downloadUrl = "https://dldir1.qq.com/qqfile/qq/QQNT/b07cb1a5/QQ9.9.15.27597_x64.exe"
         return $downloadUrl
     }
     catch {
