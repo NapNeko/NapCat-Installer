@@ -102,7 +102,7 @@ generate_docker_command() {
     docker_cmd1="sudo docker run -d -e ACCOUNT=$qq"
     docker_cmd2="--name napcat --restart=always ${target_proxy:+${target_proxy}/}mlikiowa/napcat-docker:latest"
     docker_ws="$docker_cmd1 -e WS_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -p 3001:3001 -p 6099:6099 $docker_cmd2"
-    docker_reverse_ws="$docker_cmd1 -e WSR_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -e WS_URLS='[]' $docker_cmd2"
+    docker_reverse_ws="$docker_cmd1 -e WSR_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -e WS_URLS='[]' -p 6099:6099 $docker_cmd2"
     docker_reverse_http="$docker_cmd1 -e HTTP_ENABLE=true  -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 $docker_cmd2"
     if [ "$mode" = "ws" ]; then
         echo $docker_ws
