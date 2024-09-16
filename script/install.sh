@@ -267,18 +267,18 @@ update_linuxqq_config() {
 
 install_linuxqq() {
     echo "安装LinuxQQ..."
-    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/0724892e/linuxqq_3.2.12-27597"
+    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.12_240819"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="${base_url}_x86_64.rpm"
+            qq_download_url="${base_url}_x86_64_01.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="${base_url}_amd64.deb"
+            qq_download_url="${base_url}_amd64_01.deb"
         fi
     elif [ "$system_arch" = "arm64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="${base_url}_aarch64.rpm"
+            qq_download_url="${base_url}_aarch64_01.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="${base_url}_arm64.deb"
+            qq_download_url="${base_url}_arm64_01.deb"
         fi
     fi
 
