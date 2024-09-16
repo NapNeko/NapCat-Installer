@@ -263,6 +263,15 @@ update_linuxqq_config() {
         '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "$conf" > "$conf.tmp" && \
         sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败！"; exit 1; }
     done
+
+    # 修改QQ Package配置
+    index_path="./app_launcher/index.js"
+    tmp_path="/tmp/package.json.tmp"
+    package_path="/opt/QQ/resources/app/package.json"
+    echo "正在修改 $package_path..."
+    sudo jq --arg jsPath "$index_path" \
+    '.main = $jsPath' "$package_path" > "$tmp_path" && \
+    sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败！"; exit 1; }
 }
 
 install_linuxqq() {
