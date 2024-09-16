@@ -482,7 +482,7 @@ if [ -z $napcat_version ]; then
 fi
 
 echo "最新NapCatQQ版本：$napcat_version"
-target_folder="/opt/QQ/resources/app"
+target_folder="/opt/QQ/resources/app/app_launcher"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
     install_napcat
