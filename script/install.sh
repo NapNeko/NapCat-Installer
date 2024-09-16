@@ -265,7 +265,7 @@ update_linuxqq_config() {
     done
 
     # 修改QQ Package配置
-    index_path="./app_launcher/index.js"
+    index_path="./loadNapCat.js"
     tmp_path="/tmp/package.json.tmp"
     package_path="/opt/QQ/resources/app/package.json"
     echo "正在修改 $package_path..."
@@ -457,20 +457,12 @@ install_napcat() {
 
     sudo chmod -R 777 "$target_folder/napcat/"
     echo "正在修补文件..."
-    # sudo mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
-    #判断文件 /opt/QQ/resources/app/package.json 里面是否包括 ./application/app_launcher/index.js这段文本 如果包含则替换为loadNapCat.js
-    if grep -q "./application/app_launcher/index.js" "$target_folder/package.json"; then
-        sudo sed -i 's/"\.\/application\/app_launcher\/index\.js"/"\.\/application\/app_launcher\/loadNapCat\.js"/' "$target_folder/package.json"
+    sudo echo "(async () => {await import('file:///$target_folder/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
+    if [ $? -ne 0 ]; then
+        echo "loadNapCat.js文件写入失败，请以root身份运行。"
+        clean
+        exit 1
     fi
-    #写入/opt/QQ/resources/app/loadNapCat.js output_index_js
-    echo "(async () => {await import('file:///$target_folder/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
-    #sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
-
-    # if [ $? -ne 0 ]; then
-    #     echo "index.js文件写入失败，请以root身份运行。"
-    #     clean
-    #     exit 1
-    # fi
     clean
 }
 
