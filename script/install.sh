@@ -448,9 +448,14 @@ install_napcat() {
 
     sudo chmod -R 777 "$target_folder/napcat/"
     echo "正在修补文件..."
-    sudo mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
+    # sudo mv -f "$target_folder/index.js" "$target_folder/index.js.bak"
+    #判断文件 /opt/QQ/resources/app/package.json 里面是否包括 ./application/app_launcher/index.js这段文本 如果包含则替换为loadNapCat.js
+    if grep -q "./application/app_launcher/index.js" "$target_folder/package.json"; then
+        sudo sed -i 's/"\.\/application\/app_launcher\/index\.js"/"\.\/application\/app_launcher\/loadNapCat\.js"/' "$target_folder/package.json"
+    fi
+    #写入/opt/QQ/resources/app/loadNapCat.js output_index_js
     output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--no-sandbox');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
-    sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
+    #sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
 
     if [ $? -ne 0 ]; then
         echo "index.js文件写入失败，请以root身份运行。"
