@@ -454,14 +454,14 @@ install_napcat() {
         sudo sed -i 's/"\.\/application\/app_launcher\/index\.js"/"\.\/application\/app_launcher\/loadNapCat\.js"/' "$target_folder/package.json"
     fi
     #写入/opt/QQ/resources/app/loadNapCat.js output_index_js
-    #output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--no-sandbox');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
+    echo "(async () => {await import('file:///$target_folder/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
     #sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
 
-    if [ $? -ne 0 ]; then
-        echo "index.js文件写入失败，请以root身份运行。"
-        clean
-        exit 1
-    fi
+    # if [ $? -ne 0 ]; then
+    #     echo "index.js文件写入失败，请以root身份运行。"
+    #     clean
+    #     exit 1
+    # fi
     clean
 }
 
