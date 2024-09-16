@@ -454,7 +454,7 @@ install_napcat() {
         sudo sed -i 's/"\.\/application\/app_launcher\/index\.js"/"\.\/application\/app_launcher\/loadNapCat\.js"/' "$target_folder/package.json"
     fi
     #写入/opt/QQ/resources/app/loadNapCat.js output_index_js
-    output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--no-sandbox');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
+    #output_index_js=$(echo -e "const path = require('path');\nconst CurrentPath = path.dirname(__filename)\nconst hasNapcatParam = process.argv.includes('--no-sandbox');\nif (hasNapcatParam) {\n    (async () => {\n        await import(\\\"file://\\\" + path.join(CurrentPath, './napcat/napcat.mjs'));\n    })();\n} else {\n    require('./launcher.node').load('external_index', module);\n}")
     #sudo bash -c "echo \"$output_index_js\" > \"$target_folder/index.js\""
 
     if [ $? -ne 0 ]; then
@@ -473,7 +473,7 @@ if [ -z $napcat_version ]; then
 fi
 
 echo "最新NapCatQQ版本：$napcat_version"
-target_folder="/opt/QQ/resources/app/app_launcher"
+target_folder="/opt/QQ/resources/app"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
     install_napcat
