@@ -267,18 +267,18 @@ update_linuxqq_config() {
 
 install_linuxqq() {
     echo "安装LinuxQQ..."
-    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.12_240819"
+    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/1aff6d6d/linuxqq_3.2.12-28060"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="${base_url}_x86_64_01.rpm"
+            qq_download_url="${base_url}_x86_64.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="${base_url}_amd64_01.deb"
+            qq_download_url="${base_url}_amd64.deb"
         fi
     elif [ "$system_arch" = "arm64" ]; then
         if [ "$package_installer" = "rpm" ]; then
-            qq_download_url="${base_url}_aarch64_01.rpm"
+            qq_download_url="${base_url}_aarch64.rpm"
         elif [ "$package_installer" = "dpkg" ]; then
-            qq_download_url="${base_url}_arm64_01.deb"
+            qq_download_url="${base_url}_arm64.deb"
         fi
     fi
 
@@ -326,7 +326,7 @@ install_linuxqq() {
 
 # 检测是否已安装LinuxQQ
 package_name="linuxqq"
-package_targetVer="3.2.12-27597"
+package_targetVer="3.2.12-28060"
 target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
