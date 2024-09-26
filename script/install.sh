@@ -276,7 +276,7 @@ update_linuxqq_config() {
 
 install_linuxqq() {
     echo "安装LinuxQQ..."
-    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/1aff6d6d/linuxqq_3.2.12-28060"
+    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/f60e8252/linuxqq_3.2.12-28327"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
             qq_download_url="${base_url}_x86_64.rpm"
