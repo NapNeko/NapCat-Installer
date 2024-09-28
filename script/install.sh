@@ -171,7 +171,7 @@ if [ "$use_docker" = "y" ]; then
     if [ "$(check_docker)" = "false" ]; then
          sudo apt update -y
          sudo apt install -y curl
-         sudo curl -fsSL https://nclatest.znin.net/getdocker -o get-docker.sh
+         sudo curl -fsSL https://nclatest.znin.net/docker_install_script -o get-docker.sh
          sudo chmod +x get-docker.sh
          sudo sh get-docker.sh
     fi
@@ -274,9 +274,16 @@ update_linuxqq_config() {
     sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败！"; exit 1; }
 }
 
+get_qq_target_version() {
+    response=$( curl -s "https://nclatest.znin.net/get_qq_ver" )
+    remoteQQVer=$( echo "$response" | jq -r '.linuxVersion' )
+    remoteQQVerHash=$( echo "$response" | jq -r '.linuxVerHash' )
+    echo "$remoteQQVer $remoteQQVerHash"
+}
+
 install_linuxqq() {
     echo "安装LinuxQQ..."
-    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/f60e8252/linuxqq_3.2.12-28327"
+    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/$package_targetVerHash/linuxqq_$package_targetVer"
     if [ "$system_arch" = "amd64" ]; then
         if [ "$package_installer" = "rpm" ]; then
             qq_download_url="${base_url}_x86_64.rpm"
@@ -335,7 +342,13 @@ install_linuxqq() {
 
 # 检测是否已安装LinuxQQ
 package_name="linuxqq"
-package_targetVer="3.2.12-28327"
+remote_qq_info=$(get_qq_target_version)
+package_targetVer=$(echo "$remote_qq_info" | awk '{print $1}')
+package_targetVerHash=$(echo "$remote_qq_info" | awk '{print $2}')
+if [[ -z "$package_targetVer" || "$package_targetVer" == "null" ]] || [[ -z "$package_targetVerHash" || "$package_targetVerHash" == "null" ]]; then
+    echo "无法获取远程QQ版本，请检查错误。"
+    exit 1
+fi
 target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
