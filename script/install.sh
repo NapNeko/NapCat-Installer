@@ -259,7 +259,7 @@ update_linuxqq_config() {
     # 遍历配置文件并进行修改
     for conf in $confs; do
         echo "正在修改 $conf..."
-        sudo jq --arg targetVer "$package_targetVer" --arg buildId "$target_build" \
+        sudo jq --arg targetVer "$1" --arg buildId "$2" \
         '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "$conf" > "$conf.tmp" && \
         sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败！"; exit 1; }
     done
@@ -340,7 +340,7 @@ install_linuxqq() {
         # sudo apt install -y libasound2t64
         rm -f QQ.deb
     fi
-    update_linuxqq_config
+    update_linuxqq_config "$package_targetVer" "$target_build"
 }
 
 # 检测是否已安装LinuxQQ
@@ -370,6 +370,7 @@ else
                 install_linuxqq
             else
                 echo "版本已满足要求，无需更新。"
+                update_linuxqq_config "$version" "$installed_build"
             fi
         else
             install_linuxqq
@@ -384,6 +385,7 @@ else
                 install_linuxqq
             else
                 echo "版本已满足要求，无需更新。"
+                update_linuxqq_config "$version" "$installed_build"
             fi
         else
             install_linuxqq
