@@ -250,7 +250,7 @@ else
 fi
 
 update_linuxqq_config() {
-    echo "正在更新QQ配置..."
+    echo "正在更新用户QQ配置..."
     # 查找用户的QQ配置文件
     confs=$(sudo find /home -name "config.json" -path "*/.config/QQ/versions/*" 2>/dev/null)
     if [ -f /root/.config/QQ/versions/config.json ]; then
@@ -263,16 +263,18 @@ update_linuxqq_config() {
         '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "$conf" > "$conf.tmp" && \
         sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败！"; exit 1; }
     done
-    chmod +777 /opt/QQ
-    sudo sed -i 's/"main": ".\/application\/app_launcher\/index.js"/"main": ".\/loadNapCat.js"/' /opt/QQ/resources/app/package.json
+}
+
+modify_qq_config() {
     # 修改QQ Package配置
-    # index_path="./loadNapCat.js"
-    # tmp_path="/tmp/package.json.tmp"
-    # package_path="/opt/QQ/resources/app/package.json"
-    # echo "正在修改 $package_path..."
-    # sudo jq --arg jsPath "$index_path" \
-    # '.main = $jsPath' "$package_path" > "$tmp_path" && \
-    # sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败！"; exit 1; }
+    echo "正在修改QQ启动配置..."
+    index_path="./loadNapCat.js"
+    tmp_path="/tmp/package.json.tmp"
+    package_path="/opt/QQ/resources/app/package.json"
+    echo "正在修改 $package_path..."
+    sudo jq --arg jsPath "$index_path" \
+    '.main = $jsPath' "$package_path" > "$tmp_path" && \
+    sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败！"; exit 1; }
 }
 
 get_qq_target_version() {
@@ -388,6 +390,8 @@ else
         fi
     fi
 fi
+# 修改QQ配置
+modify_qq_config
 
 # 函数：清理临时文件
 clean() {
@@ -488,7 +492,7 @@ if [ -z $napcat_version ]; then
 fi
 
 echo "最新NapCatQQ版本：$napcat_version"
-target_folder="/opt/QQ/resources/app"
+target_folder="/opt/QQ/resources/app/app_launcher"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
     install_napcat
