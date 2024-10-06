@@ -6,6 +6,8 @@ detect_package_manager() {
         echo "apt"
     elif command -v yum &> /dev/null; then
         echo "yum"
+    elif command -v pacman &> /dev/null; then
+        echo "pacman"
     else
         echo "none"
     fi
@@ -60,10 +62,10 @@ sudo_id_output=$(sudo whoami)
 
 # 检查输出中是否包含uid=0
 if [[ $sudo_id_output == "root" ]]; then
-  echo "当前用户是root用户（uid=0），继续执行……"
+    echo "当前用户是root用户（uid=0），继续执行……"
 else
-  echo "当前用户不是root用户，请将此用户加入sudo group后再试。"
-  exit 1
+    echo "当前用户不是root用户，请将此用户加入sudo group后再试。"
+    exit 1
 fi
 
 system_arch=$(get_system_arch)
@@ -73,6 +75,14 @@ if [ "$system_arch" = "none" ]; then
 fi
 echo "当前系统架构：$system_arch"
 
+# 获取最新最热NapCat版本号
+napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
+if [ -z $napcat_version ]; then
+    echo "无法获取NapCatQQ版本，请检查错误。"
+    exit 1
+fi
+
+echo "最新NapCatQQ版本：$napcat_version"
 # 保证 curl/wget apt/rpm 基础环境
 echo "正在更新依赖..."
 package_manager=$(detect_package_manager)
@@ -84,23 +94,30 @@ elif [ "$package_manager" = "yum" ]; then
     # 安装epel, 因为某些包在自带源里缺失
     sudo yum install -y epel-release
     sudo yum install -y zip unzip jq curl
+elif [ "$package_manager" = "pacman" ]; then
+    sudo pacman -S zip unzip jq curl
 else
     echo "包管理器检查失败，目前仅支持apt/yum。"
     exit 1
 fi
 
 # 判断LITELOADERQQNT_PROFILE是否存在
-if [ ! $LITELOADERQQNT_PROFILE ]
+if [ $LITELOADERQQNT_PROFILE ]; then
     network_test
     curl -o ./NapCat.zip $napcat_download_url
     sudo unzip -d $LITELOADERQQNT_PROFILE/plugins/ ./NapCat.zip
     echo '安装结束，请重启QQ'
 else
     # 获取LiteLoaderQQNT路径
-    LITELOADERQQNT=${${$(cat ${QQ_PATH}/app_launcher/${$(jq '.main' ${QQ_PATH}/package.json)#*/})#*`}%`*}
+    package_main1=$(jq '.main' $QQ_PATH/package.json)
+    package_main=${package_main1#*/}
+    liteloaderjs_path=${QQ_PATH}'/app_launcher/'${package_main%\"*}
+    liteloader_path=$(cat liteloaderjs_path)
+    liteloaderqqnt1=${liteloader_path#*\`}
+    liteloaderqqnt=${liteloaderqqnt1%*\`}
     network_test
     curl -o ./NapCat.zip $napcat_download_url
-    sudo unzip -d $LITELOADERQQNT/plugins/ ./NapCat.zip
+    sudo unzip -d $liteloaderqqnt/plugins/ ./NapCat.zip
     echo '安装结束，请重启QQ'
-
+fi
 
