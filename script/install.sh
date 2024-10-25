@@ -40,7 +40,7 @@ while [[ $# -ge 1 ]]; do
     esac
 done
 
-# 函数: 检查当前系统是amd64还是x86_64 读取失败返回none
+# 函数: 检查当前系统是amd64还是arm64 读取失败返回none
 get_system_arch() {
     echo $(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) 
 }
