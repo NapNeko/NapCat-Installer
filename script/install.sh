@@ -90,7 +90,7 @@ network_test() {
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
-    napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/v3.1.5/napcat.packet.linux"
+    napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
 }
 
 # 函数: 根据参数生成docker命令
