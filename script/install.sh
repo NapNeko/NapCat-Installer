@@ -461,6 +461,7 @@ install_napcat_dlc() {
     mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
     # cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_$ACCOUNT.json
 }
+
 # 函数: 安装NapCatQQ
 install_napcat() {
     echo "安装NapCatQQ..."
