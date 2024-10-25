@@ -53,10 +53,10 @@ network_test() {
     proxy_num=${proxy_num:-9}
 
     if [ "$parm1" == "Github" ]; then
-        proxy_arr=("https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghp.ci" "https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     else
-        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "docker.agsv.top" "docker.registry.cyou")
+        proxy_arr=("docker.rainbond.cc" "docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "docker.agsv.top" "docker.registry.cyou")
         check_url=""
     fi
 
@@ -90,7 +90,12 @@ network_test() {
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
-    napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
+    
+    if [ "$system_arch" = "amd64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
+    elif [ "$system_arch" = "arm64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/Fahaxikiii/NapCat-Installer/releases/download/1/napcat.packet.arm64"
+    fi
 }
 
 # 函数: 根据参数生成docker命令
@@ -537,10 +542,7 @@ install_napcat() {
         clean
         exit 1
     fi
-
-    if [ "$system_arch" = "amd64" ]; then
     install_napcat_dlc
-    fi
     clean
 }
 
@@ -574,15 +576,13 @@ else
 fi
 
 clear
+echo "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
+echo "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
+echo "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
+echo "停止后台运行 请输入 screen -S napcatdlc -X quit"
+echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
 echo -e "\n安装完成, 请输入 xvfb-run -a qq --no-sandbox 命令启动。"
 echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
 echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
 echo "Napcat安装位置 $target_folder/napcat"
 echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
-if [ "$system_arch" = "amd64" ]; then
-    echo "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
-    echo "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
-    echo "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
-    echo "停止后台运行 请输入 screen -S napcatdlc -X quit"
-    echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
-fi
