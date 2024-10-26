@@ -1,5 +1,16 @@
 #!/bin/bash
 
+echo -e '\033[0;36m'
+cat << EOF
+███╗   ██╗     █████╗     ██████╗      ██████╗     █████╗     ████████╗
+████╗  ██║    ██╔══██╗    ██╔══██╗    ██╔════╝    ██╔══██╗    ╚══██╔══╝
+██╔██╗ ██║    ███████║    ██████╔╝    ██║         ███████║       ██║   
+██║╚██╗██║    ██╔══██║    ██╔═══╝     ██║         ██╔══██║       ██║   
+██║ ╚████║    ██║  ██║    ██║         ╚██████╗    ██║  ██║       ██║   
+╚═╝  ╚═══╝    ╚═╝  ╚═╝    ╚═╝          ╚═════╝    ╚═╝  ╚═╝       ╚═╝   
+EOF
+echo -e '\033[0m'
+
 # From DebianNET.sh
 while [[ $# -ge 1 ]]; do
     case $1 in
@@ -90,12 +101,6 @@ network_test() {
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
-    
-    if [ "$system_arch" = "amd64" ]; then
-        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
-    elif [ "$system_arch" = "arm64" ]; then
-        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/Fahaxikiii/NapCat-Installer/releases/download/1/napcat.packet.arm64"
-    fi
 }
 
 # 函数: 根据参数生成docker命令
@@ -421,6 +426,12 @@ install_napcat_dlc() {
     # 网络测试    
     network_test "Github"
 
+    if [ "$system_arch" = "amd64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
+    elif [ "$system_arch" = "arm64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/Fahaxikiii/NapCat-Installer/releases/download/1/napcat.packet.arm64"
+    fi
+    
     default_file="./tmp/napcat.packet.linux"
     echo "NapCatQQ下载链接: $napcat_dlc_download_url"
     sudo curl -L "$napcat_dlc_download_url" -o "$default_file"
