@@ -1,5 +1,16 @@
 #!/bin/bash
 
+echo -e '\033[0;36m'
+cat << EOF
+███╗   ██╗     █████╗     ██████╗      ██████╗     █████╗     ████████╗
+████╗  ██║    ██╔══██╗    ██╔══██╗    ██╔════╝    ██╔══██╗    ╚══██╔══╝
+██╔██╗ ██║    ███████║    ██████╔╝    ██║         ███████║       ██║   
+██║╚██╗██║    ██╔══██║    ██╔═══╝     ██║         ██╔══██║       ██║   
+██║ ╚████║    ██║  ██║    ██║         ╚██████╗    ██║  ██║       ██║   
+╚═╝  ╚═══╝    ╚═╝  ╚═╝    ╚═╝          ╚═════╝    ╚═╝  ╚═╝       ╚═╝   
+EOF
+echo -e '\033[0m'
+
 # From DebianNET.sh
 while [[ $# -ge 1 ]]; do
     case $1 in
@@ -40,12 +51,12 @@ while [[ $# -ge 1 ]]; do
     esac
 done
 
-# 函数：检查当前系统是amd64还是x86_64 读取失败返回none
+# 函数: 检查当前系统是amd64还是arm64 读取失败返回none
 get_system_arch() {
     echo $(arch | sed s/aarch64/arm64/ | sed s/x86_64/amd64/) 
 }
 
-# 函数：代理连通性测试
+# 函数: 代理连通性测试
 network_test() {
     local parm1=$1
     local found=0
@@ -53,46 +64,46 @@ network_test() {
     proxy_num=${proxy_num:-9}
 
     if [ "$parm1" == "Github" ]; then
-        proxy_arr=("https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghp.ci" "https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     else
-        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "docker.agsv.top" "docker.registry.cyou")
+        proxy_arr=("docker.rainbond.cc" "docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "docker.agsv.top" "docker.registry.cyou")
         check_url=""
     fi
 
     if [ ! -z "$proxy_num" ] && [ "$proxy_num" -ge 1 ] && [ "$proxy_num" -le ${#proxy_arr[@]} ]; then
-        echo "手动指定代理：${proxy_arr[$proxy_num-1]}"
+        echo "手动指定代理: ${proxy_arr[$proxy_num-1]}"
         target_proxy="${proxy_arr[$proxy_num-1]}"
     else
         if [ "$proxy_num" -ne 0 ]; then
-            echo "proxy 未指定或超出范围，正在检查${parm1}代理可用性..."
+            echo "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
             for proxy in "${proxy_arr[@]}"; do
                 status=$(curl -o /dev/null -s -w "%{http_code}" "$proxy/$check_url")
                 if [ "$parm1" == "Github" ] && [ $status -eq 200 ]; then
                     found=1
                     target_proxy="$proxy"
-                    echo "将使用${parm1}代理：$proxy"
+                    echo "将使用${parm1}代理: $proxy"
                     break
                 elif [ "$parm1" == "Docker" ] && ([ $status -eq 200 ] || [ $status -eq 301 ]); then
                     found=1
                     target_proxy="$proxy"
-                    echo "将使用${parm1}代理：$proxy"
+                    echo "将使用${parm1}代理: $proxy"
                     break
                 fi
             done
 
             if [ $found -eq 0 ]; then
-                echo "无法连接到${parm1}，请检查网络。"
+                echo "无法连接到${parm1}, 请检查网络。"
                 exit 1
             fi
         else
-            echo "代理已关闭，将直接连接${parm1}..."
+            echo "代理已关闭, 将直接连接${parm1}..."
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
 }
 
-# 函数：根据参数生成docker命令
+# 函数: 根据参数生成docker命令
 generate_docker_command() {
     # 检查网络
     network_test "Docker" > /dev/null 2>&1
@@ -115,7 +126,7 @@ generate_docker_command() {
     fi
 }
 
-# 函数：检查并返回可用的包管理器
+# 函数: 检查并返回可用的包管理器
 detect_package_manager() {
     if command -v apt &> /dev/null; then
         echo "apt"
@@ -126,7 +137,7 @@ detect_package_manager() {
     fi
 }
 
-# 函数：检查并返回可用的命令
+# 函数: 检查并返回可用的命令
 detect_package_installer() {
     if command -v dpkg &> /dev/null; then
         echo "dpkg"
@@ -137,7 +148,7 @@ detect_package_installer() {
     fi
 }
 
-# 函数：检查用户是否安装docker
+# 函数: 检查用户是否安装docker
 check_docker() {
     if command -v docker &> /dev/null; then
         echo "true"
@@ -156,15 +167,15 @@ sudo_id_output=$(sudo whoami)
 
 # 检查输出中是否包含uid=0
 if [[ $sudo_id_output == "root" ]]; then
-  echo "当前用户是root用户（uid=0），继续执行……"
+  echo "当前用户是root用户 (uid=0) ,继续执行……"
 else
-  echo "当前用户不是root用户，请将此用户加入sudo group后再试。"
+  echo "当前用户不是root用户, 请将此用户加入sudo group后再试。"
   exit 1
 fi
 
 if [[ -z $use_docker ]]; then
     # Docker安装询问
-    echo "是否使用Docker安装？(y/n)"
+    echo "是否使用Docker安装? (y/n)"
     read -r use_docker
 fi
 if [ "$use_docker" = "y" ]; then
@@ -185,11 +196,11 @@ if [ "$use_docker" = "y" ]; then
 
     while true; do
         if [[ -z $qq ]]; then
-            echo "请输入QQ号："
+            echo "请输入QQ号: "
             read -r qq
         fi
         if [[ -z $mode ]]; then
-            echo "请选择模式（ws/reverse_ws/reverse_http）"
+            echo "请选择模式 (ws/reverse_ws/reverse_http) "
             read -r mode
         fi
         docker_command=$(generate_docker_command "$qq" "$mode")
@@ -197,10 +208,10 @@ if [ "$use_docker" = "y" ]; then
             echo "模式错误, 无法生成命令"
             confirm="n"
         else
-            echo -e "即将执行以下命令：$docker_command\n"
+            echo -e "即将执行以下命令: $docker_command\n"
         fi
         if [[ -z $confirm ]]; then
-            read -p "是否继续？(y/n) " confirm
+            read -p "是否继续? (y/n) " confirm
         fi
         case $confirm in
             y|Y ) break;;
@@ -214,7 +225,7 @@ if [ "$use_docker" = "y" ]; then
     done
     eval "$docker_command"
     if [ $? -ne 0 ]; then
-        echo "Docker启动失败，请检查错误。"
+        echo "Docker启动失败, 请检查错误。"
         exit 1
     fi
     echo "安装成功"
@@ -222,16 +233,16 @@ if [ "$use_docker" = "y" ]; then
 elif [ "$use_docker" = "n" ]; then
     echo "不使用Docker安装"
 else
-    echo "输入错误，请重新安装"
+    echo "输入错误, 请重新安装"
     exit 1
 fi
 
 system_arch=$(get_system_arch)
 if [ "$system_arch" = "none" ]; then
-    echo "无法识别的系统架构，请检查错误。"
+    echo "无法识别的系统架构, 请检查错误。"
     exit 1
 fi
-echo "当前系统架构：$system_arch"
+echo "当前系统架构: $system_arch"
 
 # 保证 curl/wget apt/rpm 基础环境
 echo "正在更新依赖..."
@@ -245,7 +256,7 @@ elif [ "$package_manager" = "yum" ]; then
     sudo yum install -y epel-release
     sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen
 else
-    echo "包管理器检查失败，目前仅支持apt/yum。"
+    echo "包管理器检查失败, 目前仅支持apt/yum。"
     exit 1
 fi
 
@@ -261,7 +272,7 @@ update_linuxqq_config() {
         echo "正在修改 $conf..."
         sudo jq --arg targetVer "$1" --arg buildId "$2" \
         '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "$conf" > "$conf.tmp" && \
-        sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败！"; exit 1; }
+        sudo mv "$conf.tmp" "$conf" || { echo "QQ配置更新失败! "; exit 1; }
     done
 }
 
@@ -274,7 +285,7 @@ modify_qq_config() {
     echo "正在修改 $package_path..."
     sudo jq --arg jsPath "$index_path" \
     '.main = $jsPath' "$package_path" > "$tmp_path" && \
-    sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败！"; exit 1; }
+    sudo mv "$tmp_path" "$package_path" || { echo "QQ Package配置更新失败! "; exit 1; }
 }
 
 get_qq_target_version() {
@@ -302,34 +313,34 @@ install_linuxqq() {
     fi
 
     if [ "$qq_download_url" = "" ]; then
-        echo "无法下载QQ，请检查错误。"
+        echo "无法下载QQ, 请检查错误。"
         exit 1
     fi
-    echo "QQ下载链接：$qq_download_url"
+    echo "QQ下载链接: $qq_download_url"
 
     # TODO: 优化QQ包依赖
     # 鉴于QQ似乎仍在变动linux包的依赖, 所以目前暂时安装所有QQ认为其自身所需的依赖以尽力保证脚本正常工作
     if [ "$package_manager" = "yum" ]; then
         sudo curl -L "$qq_download_url" -o QQ.rpm
         if [ $? -ne 0 ]; then
-            echo "文件下载失败，请检查错误。"
+            echo "文件下载失败, 请检查错误。"
             exit 1
         fi
         sudo yum localinstall -y ./QQ.rpm
         if [ $? -ne 0 ]; then
-            echo "QQ安装失败，请检查错误。"
+            echo "QQ安装失败, 请检查错误。"
             exit 1
         fi
         rm -f QQ.rpm
     elif [ "$package_manager" = "apt" ]; then
         sudo curl -L "$qq_download_url" -o QQ.deb
         if [ $? -ne 0 ]; then
-            echo "文件下载失败，请检查错误。"
+            echo "文件下载失败, 请检查错误。"
             exit 1
         fi
         sudo apt install -f -y ./QQ.deb
         if [ $? -ne 0 ]; then
-            echo "QQ安装失败，请检查错误。"
+            echo "QQ安装失败, 请检查错误。"
             exit 1
         fi
         # QQ自己声明的依赖不全...需要手动补全
@@ -349,13 +360,13 @@ remote_qq_info=$(get_qq_target_version)
 package_targetVer=$(echo "$remote_qq_info" | awk '{print $1}')
 package_targetVerHash=$(echo "$remote_qq_info" | awk '{print $2}')
 if [[ -z "$package_targetVer" || "$package_targetVer" == "null" ]] || [[ -z "$package_targetVerHash" || "$package_targetVerHash" == "null" ]]; then
-    echo "无法获取远程QQ版本，请检查错误。"
+    echo "无法获取远程QQ版本, 请检查错误。"
     exit 1
 fi
 target_build=${package_targetVer##*-}
 package_installer=$(detect_package_installer)
 
-echo "最低linuxQQ版本：$package_targetVer，构建：$target_build"
+echo "最低linuxQQ版本: $package_targetVer, 构建: $target_build"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
     install_linuxqq
@@ -364,12 +375,12 @@ else
         if rpm -q $package_name &> /dev/null; then
             version=$(rpm -q --queryformat '%{VERSION}' $package_name)
             installed_build=${version##*-}
-            echo "$package_name 已安装，版本: $version，构建：$installed_build"
+            echo "$package_name 已安装, 版本: $version, 构建: $installed_build"
             if (( installed_build < target_build )); then
-                echo "版本过低，需要更新。"
+                echo "版本过低, 需要更新。"
                 install_linuxqq
             else
-                echo "版本已满足要求，无需更新。"
+                echo "版本已满足要求, 无需更新。"
                 update_linuxqq_config "$version" "$installed_build"
             fi
         else
@@ -379,12 +390,12 @@ else
         if dpkg -l | grep $package_name &> /dev/null; then
             version=$(dpkg -l | grep "^ii" | grep "linuxqq" | awk '{print $3}')
             installed_build=${version##*-}
-            echo "$package_name 已安装，版本: $version，构建：$installed_build"
+            echo "$package_name 已安装, 版本: $version, 构建: $installed_build"
             if (( installed_build < target_build )); then
-                echo "版本过低，需要更新。"
+                echo "版本过低, 需要更新。"
                 install_linuxqq
             else
-                echo "版本已满足要求，无需更新。"
+                echo "版本已满足要求, 无需更新。"
                 update_linuxqq_config "$version" "$installed_build"
             fi
         else
@@ -395,20 +406,79 @@ fi
 # 修改QQ配置
 modify_qq_config
 
-# 函数：清理临时文件
+# 函数: 清理临时文件
 clean() {
     rm -rf ./NapCat/
     rm -rf ./tmp/
     if [ $? -ne 0 ]; then
-        echo "临时文件删除失败，请手动删除 $default_file。"
+        echo "临时文件删除失败, 请手动删除 $default_file。"
     fi
     rm -rf ./NapCat.Shell.zip
     if [ $? -ne 0 ]; then
-        echo "NapCatQQ压缩包删除失败，请手动删除 $default_file。"
+        echo "NapCatQQ压缩包删除失败, 请手动删除 $default_file。"
     fi
 }
 
-# 函数：安装NapCatQQ
+# 函数: 安装NapCatQQ DLC
+install_napcat_dlc() {
+    echo "安装NapCatQQ DLC..."
+    
+    # 网络测试    
+    network_test "Github"
+
+    if [ "$system_arch" = "amd64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
+    elif [ "$system_arch" = "arm64" ]; then
+        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/Fahaxikiii/NapCat-Installer/releases/download/1/napcat.packet.arm64"
+    fi
+    
+    default_file="./tmp/napcat.packet.linux"
+    echo "NapCatQQ下载链接: $napcat_dlc_download_url"
+    sudo curl -L "$napcat_dlc_download_url" -o "$default_file"
+    if [ $? -ne 0 ]; then
+        echo "文件下载失败, 请检查错误。"
+        exit 1
+    fi
+
+    if [ -f "$default_file" ]; then
+        echo "$default_file 成功下载。"
+    else
+        ext_file=$(basename "$napcat_download_url")
+        if [ -f "$ext_file" ]; then
+            mv "$ext_file" "$default_file"
+            if [ $? -ne 0 ]; then
+                echo "$default_file 成功下载。"
+            else
+                echo "文件更名失败, 请检查错误。"
+                clean
+                exit 1
+            fi
+        else
+            echo "文件下载失败, 请检查错误。"
+            clean
+            exit 1
+        fi
+    fi
+
+    if [ ! -d "$target_folder/napcat.packet" ]; then
+        sudo mkdir "$target_folder/napcat.packet/"
+    fi
+
+    echo "正在移动文件..."
+    sudo cp -f ./tmp/napcat.packet.linux "$target_folder/napcat.packet/"
+    if [ $? -ne 0 -a $? -ne 1 ]; then
+        echo "文件移动失败, 请以root身份运行。"
+        clean
+        exit 1
+    fi
+
+    sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
+    jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
+    mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
+    # cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_$ACCOUNT.json
+}
+
+# 函数: 安装NapCatQQ
 install_napcat() {
     echo "安装NapCatQQ..."
     
@@ -416,10 +486,10 @@ install_napcat() {
     network_test "Github"
 
     default_file="NapCat.Shell.zip"
-    echo "NapCatQQ下载链接：$napcat_download_url"
+    echo "NapCatQQ下载链接: $napcat_download_url"
     sudo curl -L "$napcat_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
-        echo "文件下载失败，请检查错误。"
+        echo "文件下载失败, 请检查错误。"
         exit 1
     fi
 
@@ -436,12 +506,12 @@ install_napcat() {
             if [ $? -ne 0 ]; then
                 echo "$default_file 成功下载。"
             else
-                echo "文件更名失败，请检查错误。"
+                echo "文件更名失败, 请检查错误。"
                 clean
                 exit 1
             fi
         else
-            echo "文件下载失败，请检查错误。"
+            echo "文件下载失败, 请检查错误。"
             clean
             exit 1
         fi
@@ -450,7 +520,7 @@ install_napcat() {
     echo "正在验证 $default_file..."
     unzip -t "$default_file" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
-        echo "文件验证失败，请检查错误。"
+        echo "文件验证失败, 请检查错误。"
         clean
         exit 1
     fi
@@ -458,7 +528,7 @@ install_napcat() {
     echo "正在解压 $default_file..."
     unzip -q -o -d ./tmp/NapCat.Shell NapCat.Shell.zip
     if [ $? -ne 0 ]; then
-        echo "文件解压失败，请检查错误。"
+        echo "文件解压失败, 请检查错误。"
         clean
         exit 1
     fi
@@ -470,7 +540,7 @@ install_napcat() {
     echo "正在移动文件..."
     sudo cp -r -f ./tmp/NapCat.Shell/* "$target_folder/napcat/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
-        echo "文件移动失败，请以root身份运行。"
+        echo "文件移动失败, 请以root身份运行。"
         clean
         exit 1
     fi
@@ -479,21 +549,22 @@ install_napcat() {
     echo "正在修补文件..."
     sudo echo "(async () => {await import('file:///$target_folder/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
     if [ $? -ne 0 ]; then
-        echo "loadNapCat.js文件写入失败，请以root身份运行。"
+        echo "loadNapCat.js文件写入失败, 请以root身份运行。"
         clean
         exit 1
     fi
+    install_napcat_dlc
     clean
 }
 
 # napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
 napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
 if [ -z $napcat_version ]; then
-    echo "无法获取NapCatQQ版本，请检查错误。"
+    echo "无法获取NapCatQQ版本, 请检查错误。"
     exit 1
 fi
 
-echo "最新NapCatQQ版本：$napcat_version"
+echo "最新NapCatQQ版本: $napcat_version"
 target_folder="/opt/QQ/resources/app/app_launcher"
 if [ "$force" = "y" ]; then
     echo "强制重装模式..."
@@ -501,22 +572,28 @@ if [ "$force" = "y" ]; then
 else
     if [ -d "$target_folder/napcat" ]; then
         current_version=$(jq -r '.version' "$target_folder/napcat/package.json")
-        echo "NapCatQQ已安装，版本：v$current_version"
+        echo "NapCatQQ已安装, 版本: v$current_version"
         target_version=${napcat_version#v}
         IFS='.' read -r i1 i2 i3 <<< "$current_version"
         IFS='.' read -r t1 t2 t3 <<< "$target_version"
         if (( i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3) )); then
             install_napcat
         else
-            echo "已安装最新版本，无需更新。"
+            echo "已安装最新版本, 无需更新。"
         fi
     else
         install_napcat
     fi
 fi
 
-echo -e "\n安装完成，请输入 xvfb-run -a qq --no-sandbox 命令启动。"
+clear
+echo "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
+echo "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
+echo "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
+echo "停止后台运行 请输入 screen -S napcatdlc -X quit"
+echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
+echo -e "\n安装完成, 请输入 xvfb-run -a qq --no-sandbox 命令启动。"
 echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
 echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
 echo "Napcat安装位置 $target_folder/napcat"
-echo "注意，您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
+echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
