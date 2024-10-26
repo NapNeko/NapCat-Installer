@@ -258,7 +258,7 @@ package_manager=$(detect_package_manager)
 # 开始安装基础依赖
 if [ "$package_manager" = "apt" ]; then
     sudo apt update -y
-    sudo apt install -y zip unzip jq curl xvfb screen
+    sudo apt install -y zip unzip jq curl xvfb screen xauth
 elif [ "$package_manager" = "yum" ]; then
     # 安装epel, 因为某些包在自带源里缺失
     sudo yum install -y epel-release
@@ -433,84 +433,95 @@ cat <<EOF > "/usr/local/bin/napcat"
 #!/bin/bash
 
 function show_help() {
-    echo "Usage: napcat {status|start|stop|restart|log|help}"
+    echo "Usage: napcat {status|start [QQ账号]|stop [QQ账号]|restart [QQ账号]|log [QQ账号]|help}"
     echo ""
     echo "  status              查看 napcat 运行状态"
-    echo "  start -q <QQ账号>   启动 napcat"
-    echo "  stop                停止 napcat"
-    echo "  restart             重启 napcat"
-    echo "  log                 查看 napcat 日志"
+    echo "  start [QQ账号]      启动 napcat（可选 QQ 账号）"
+    echo "  stop [QQ账号]       停止 napcat（可选 QQ 账号）"
+    echo "  restart [QQ账号]    重启 napcat（可选 QQ 账号）"
+    echo "  log [QQ账号]        查看 napcat 日志（可选 QQ 账号）"
     echo "  注意使用 ctrl + a + d 离开，否则会导致 napcat 退出"
 }
 
-function status {
-    if screen -list | grep -q "napcat"; then
-        echo "napcat 运行中"
-    else
-        echo "napcat 未运行"
-    fi
+function status() {
+    screen -list | grep "napcat" | while read -r line ; do
+        echo "\${line} 运行中"
+    done || echo "没有运行中的 napcat 进程"
 
-    if screen -list | grep -q "napcatdlc"; then
+    if screen -list | grep -q "dlc"; then
         echo "napcatdlc 运行中"
     else
         echo "napcatdlc 未运行"
     fi
 }
 
-function start {
-    local qq_number=""
-    
-    while getopts ":q:" opt; do
-        case \$opt in
-            q) qq_number="\$OPTARG" ;;
-            \?) echo "Invalid option: -\$OPTARG" >&2; show_help; exit 1 ;;
-        esac
-    done
+function start() {
+    local qq_number="\${1:-}"
+    local screen_name="napcat"
 
-    if screen -list | grep -q "napcat"; then
-        screen -S napcat -X quit
+    if [ -n "\${qq_number}" ]; then
+        screen_name="napcat\${qq_number}"
     fi
 
-    if screen -list | grep -q "napcatdlc"; then
-        screen -S napcatdlc -X quit
-    fi
-
-    if [ -z "\$qq_number" ]; then
-        cp -f "$target_folder/napcat/config/napcat.json" "$target_folder/napcat/config/napcat_QQ号码.json"
-        screen -dmS napcatdlc bash -c "env -C $target_folder/napcat.packet ./napcat.packet.linux"
-        sleep 3
-        screen -dmS napcat bash -c "xvfb-run -a qq --no-sandbox"
+    if screen -list | grep -q "dlc"; then
+        echo "napcatdlc 已启用，跳过。"
     else
-        screen -dmS napcatdlc bash -c "env -C $target_folder/napcat.packet ./napcat.packet.linux"
+        screen -dmS dlc bash -c "env -C ${target_folder}/napcat.packet ./napcat.packet.linux"
         sleep 3
-        screen -dmS napcat bash -c "xvfb-run -a qq --no-sandbox -q \$qq_number"
     fi
-}
 
-function stop {
-    screen -S napcatdlc -X quit
-    screen -S napcat -X quit
-}
+    if screen -list | grep -q "\${screen_name}"; then
+        screen -S \${screen_name} -X quit
+    fi
 
-function restart {
-    stop
-    start "\$@"
-}
-
-function log {
-    if screen -list | grep -q "napcat"; then
-        screen -r napcat
+    if [ -n "\${qq_number}" ]; then
+        cp -f "${target_folder}/napcat/config/napcat.json" "${target_folder}/napcat/config/napcat_\${qq_number}.json"
+        screen -dmS "\${screen_name}" bash -c "xvfb-run -a qq --no-sandbox -q \${qq_number}"
     else
-        echo "napcat 未运行"
+        screen -dmS "\${screen_name}" bash -c "xvfb-run -a qq --no-sandbox"
+    fi
+
+    echo "\${screen_name} 启动成功"
+}
+
+function stop() {
+    local qq_number="\${1:-}"
+    local screen_name="napcat"
+    screen -S dlc -X quit
+
+    if [ -n "\${qq_number}" ]; then
+        screen_name="napcat\${qq_number}"
+    fi
+
+    screen -S "\${screen_name}" -X quit
+}
+
+function restart() {
+    stop "\$1"
+    start "\$1"
+}
+
+function log() {
+    local qq_number="\${1:-}"
+
+    local screen_name="napcat"
+    if [ -n "\${qq_number}" ]; then
+        screen_name="napcat\${qq_number}"
+    fi
+
+    if screen -list | grep -q "\${screen_name}"; then
+        screen -r "\${screen_name}"
+    else
+        echo "\${screen_name} 未运行"
     fi
 }
 
 case "\$1" in
     status) status ;;
-    start) shift; start "\$@" ;;
-    stop) stop ;;
-    restart) restart "\$@" ;;
-    log) log ;;
+    start) shift; start "\$1" ;;
+    stop) shift; stop "\$1" ;;
+    restart) shift; restart "\$1" ;;
+    log) shift; log "\$1" ;;
     help) show_help ;;
     *) show_help; exit 1 ;;
 esac
@@ -688,4 +699,5 @@ echo "注意, 若没有指定账号，您可能需要手动执行以下命令，
 echo " cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ账号.json"
 echo "Napcat安装位置 $target_folder/napcat"
 echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
-echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
+echo "注意, 您可以随时使用screen -r napcat(qq号) 来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
+echo "如 screen -r napcat 或 screen -r napcat123456 "
