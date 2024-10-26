@@ -427,6 +427,97 @@ clean() {
     fi
 }
 
+create_cli() {
+    mkdir -vp /usr/local/bin
+cat <<EOF > "/usr/local/bin/napcat"
+#!/bin/bash
+
+function show_help() {
+    echo "Usage: napcat {status|start|stop|restart|log|help}"
+    echo ""
+    echo "  status              查看 napcat 运行状态"
+    echo "  start -q <QQ账号>   启动 napcat"
+    echo "  stop                停止 napcat"
+    echo "  restart             重启 napcat"
+    echo "  log                 查看 napcat 日志"
+    echo "  注意使用 ctrl + a + d 离开，否则会导致 napcat 退出"
+}
+
+function status {
+    if screen -list | grep -q "napcat"; then
+        echo "napcat 运行中"
+    else
+        echo "napcat 未运行"
+    fi
+
+    if screen -list | grep -q "napcatdlc"; then
+        echo "napcatdlc 运行中"
+    else
+        echo "napcatdlc 未运行"
+    fi
+}
+
+function start {
+    local qq_number=""
+    
+    while getopts ":q:" opt; do
+        case \$opt in
+            q) qq_number="\$OPTARG" ;;
+            \?) echo "Invalid option: -\$OPTARG" >&2; show_help; exit 1 ;;
+        esac
+    done
+
+    if screen -list | grep -q "napcat"; then
+        screen -S napcat -X quit
+    fi
+
+    if screen -list | grep -q "napcatdlc"; then
+        screen -S napcatdlc -X quit
+    fi
+
+    if [ -z "\$qq_number" ]; then
+        cp -f "$target_folder/napcat/config/napcat.json" "$target_folder/napcat/config/napcat_QQ号码.json"
+        screen -dmS napcatdlc bash -c "env -C $target_folder/napcat.packet ./napcat.packet.linux"
+        sleep 3
+        screen -dmS napcat bash -c "xvfb-run -a qq --no-sandbox"
+    else
+        screen -dmS napcatdlc bash -c "env -C $target_folder/napcat.packet ./napcat.packet.linux"
+        sleep 3
+        screen -dmS napcat bash -c "xvfb-run -a qq --no-sandbox -q \$qq_number"
+    fi
+}
+
+function stop {
+    screen -S napcatdlc -X quit
+    screen -S napcat -X quit
+}
+
+function restart {
+    stop
+    start "\$@"
+}
+
+function log {
+    if screen -list | grep -q "napcat"; then
+        screen -r napcat
+    else
+        echo "napcat 未运行"
+    fi
+}
+
+case "\$1" in
+    status) status ;;
+    start) shift; start "\$@" ;;
+    stop) stop ;;
+    restart) restart "\$@" ;;
+    log) log ;;
+    help) show_help ;;
+    *) show_help; exit 1 ;;
+esac
+EOF
+    sudo chmod +x /usr/local/bin/napcat
+}
+
 # 函数: 安装NapCatQQ DLC
 install_napcat_dlc() {
     echo "安装NapCatQQ DLC..."
@@ -435,7 +526,7 @@ install_napcat_dlc() {
     network_test "Github"
 
     default_file="./tmp/napcat.packet.linux"
-    echo "NapCatQQ下载链接: $napcat_dlc_download_url"
+    echo "NapCatQQ DLC 下载链接: $napcat_dlc_download_url"
     sudo curl -L "$napcat_dlc_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
         echo "文件下载失败, 请检查错误。"
@@ -445,7 +536,7 @@ install_napcat_dlc() {
     if [ -f "$default_file" ]; then
         echo "$default_file 成功下载。"
     else
-        ext_file=$(basename "$napcat_download_url")
+        ext_file=$(basename "$napcat_dlc_download_url")
         if [ -f "$ext_file" ]; then
             mv "$ext_file" "$default_file"
             if [ $? -ne 0 ]; then
@@ -477,7 +568,6 @@ install_napcat_dlc() {
     sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
     jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
     mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
-    # cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_$ACCOUNT.json
 }
 
 # 函数: 安装NapCatQQ
@@ -557,6 +647,7 @@ install_napcat() {
     fi
     install_napcat_dlc
     clean
+    create_cli
 }
 
 # napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
@@ -589,13 +680,12 @@ else
 fi
 
 clear
-echo "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
-echo "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
-echo "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
-echo "停止后台运行 请输入 screen -S napcatdlc -X quit"
-echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
-echo -e "\n安装完成, 请输入 xvfb-run -a qq --no-sandbox 命令启动。"
-echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
-echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
+
+echo -e "\n安装完成, 请输入 napcat help 获取帮助。"
+echo "保持后台运行 请输入 napcat start"
+echo "后台快速登录 请输入 napcat start -q QQ账号"
+echo "注意, 若没有指定账号，您可能需要手动执行以下命令，否则不会连接dlc"
+echo " cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ账号.json"
 echo "Napcat安装位置 $target_folder/napcat"
+echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
 echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
