@@ -429,6 +429,10 @@ clean() {
 }
 
 install_napcat_cli() {
+    if [ -f "/usr/local/bin/napcat" ]; then
+        sudo rm -f /usr/local/bin/napcat
+    else
+
     echo "安装NapCatQQ CLI..."   
     network_test "Github"
     default_file="./tmp/napcat"
