@@ -1,0 +1,280 @@
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          napcat
+# Required-Start:    $network $remote_fs $syslog
+# Required-Stop:     $network $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Manage napcat service
+# Description:       Start, stop, restart, check status and query logs of napcat service.
+### END INIT INFO
+
+QQ=$2
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
+CMD="/usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
+PID_FILE="/var/run/napcat_$QQ.pid"
+LOG_FILE="/var/log/napcat_$QQ.log"
+
+DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
+DLC_CMD="./napcat.packet.linux"
+DLC_PID_FILE="/var/run/dlcnapcat.pid"
+DLC_LOG_FILE="/var/log/dlcnapcat.log"
+
+start() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 start 3116556127"
+        exit 1
+    fi
+
+    if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+        echo "DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过"
+    else
+        cd "$DLC_WORK_DIR" || { echo "切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败"; return 1; }
+        echo "启动 napcatdlc 服务中..."
+        exec $DLC_CMD >> "$DLC_LOG_FILE" 2>&1 &
+        echo $! > "$DLC_PID_FILE"
+        echo "DLC服务已启动 (PID: $(cat "$DLC_PID_FILE"))"
+        sleep 3
+    fi
+
+    if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+        echo "服务已运行 (PID: $(cat "$PID_FILE"))"
+    else
+        cp -f /opt/QQ/resources/app/app_launcher/napcat/config/napcat.json /opt/QQ/resources/app/app_launcher/napcat/config/napcat_$QQ.json
+        echo "启动 napcat 服务中 QQ: $QQ..."
+        exec $CMD >> "$LOG_FILE" 2>&1 &
+        echo $! > "$PID_FILE"
+        echo "服务已启动 (PID: $(cat "$PID_FILE"))"
+    fi
+}
+
+stop() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 stop 3116556127"
+        exit 1
+    fi
+
+    if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+        echo "DLC服务未运行"
+        rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+    else
+        echo "停止 napcatdlc 服务中..."
+        pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+        echo "DLC服务已停止"
+    fi
+
+    if [ ! -f "$PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+        echo "服务未运行"
+        rm -f "$PID_FILE" && rm -f "$LOG_FILE"
+    else
+        echo "停止 napcat 服务中 QQ: $QQ..."
+        pkill -9 -P $(cat "$PID_FILE") && rm -f "$PID_FILE" && rm -f "$LOG_FILE"
+        echo "服务已停止"
+    fi
+}
+
+restart() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 restart 3116556127"
+        exit 1
+    fi
+
+    echo "重启 napcat 服务中 QQ: $QQ..."
+    stop
+    sleep 2
+    start
+}
+
+status() {
+    if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+        echo "DLC服务运行中 (PID: $(cat $DLC_PID_FILE))"
+    else
+        echo "DLC服务未运行"
+    fi
+
+    if [ -z "$QQ" ]; then
+        echo "当前正在运行的服务有:"
+        for pid_file in /var/run/napcat_*.pid; do
+            if [ -f "$pid_file" ]; then
+                QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
+                if pkill -0 -P $(cat "$pid_file") > /dev/null 2>&1; then
+                    echo "$QQ 运行中 (PID: $(cat "$pid_file"))"
+                else
+                    echo "$QQ 未运行"
+                fi
+            fi
+        done
+    else
+        if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+            echo "服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))"
+        else
+            echo "服务未运行 QQ: $QQ"
+        fi
+    fi
+}
+
+log() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 log 3116556127"
+        exit 1
+    fi
+
+    if [ -f "$LOG_FILE" ]; then
+        tail -n 50 "$LOG_FILE"
+        tail -f "$LOG_FILE"
+    else
+        echo "日志文件不存在: $LOG_FILE"
+    fi
+}
+
+startup() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 startup 3116556127"
+        exit 1
+    fi
+
+    if [ -f "/etc/init.d/nc_${QQ}" ]; then
+        echo "已存在QQ${QQ}的开机自启动服务"
+        exit 1
+    fi
+
+cat <<EOF > "/etc/init.d/nc_${QQ}"
+#!/bin/bash
+### BEGIN INIT INFO
+# Provides:          nc_${QQ}
+# Required-Start:    \$network \$remote_fs \$syslog
+# Required-Stop:     \$network \$remote_fs \$syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Manage nc_${QQ} service
+# Description:       Start of nc_${QQ} service.
+### END INIT INFO
+
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
+CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q ${QQ}"
+PID_FILE="/var/run/napcat_${QQ}.pid"
+LOG_FILE="/var/log/napcat_${QQ}.log"
+
+DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
+DLC_CMD="sudo ./napcat.packet.linux"
+DLC_PID_FILE="/var/run/dlcnapcat.pid"
+DLC_LOG_FILE="/var/log/dlcnapcat.log"
+
+start() {
+
+    if [ ! -f "\$DLC_PID_FILE" ] && ! pkill -0 -P \$(cat "\$DLC_PID_FILE") > /dev/null 2>&1; then
+        cd "\$DLC_WORK_DIR" || { echo "dlc error"; return 1; }
+        exec \$DLC_CMD >> "\$DLC_LOG_FILE" 2>&1 &
+        echo \$! > "\$DLC_PID_FILE"
+        sleep 3
+        echo "dlc sucess"
+    fi
+
+    if [ ! -f "\$PID_FILE" ] && ! pkill -0 -P \$(cat "\$PID_FILE") > /dev/null 2>&1; then
+        exec \$CMD >> "\$LOG_FILE" 2>&1 &
+        echo \$! > "\$PID_FILE"
+        echo "nc sucess"
+    fi
+}
+
+case "\$1" in
+    start)
+        start
+        ;;
+    *)
+        exit 1
+        ;;
+esac
+
+exit 0
+EOF
+
+    chmod +x /etc/init.d/nc_${QQ}
+    update-rc.d nc_${QQ} defaults
+    echo "已添加QQ ${QQ}的开机自启动服务"
+}
+
+startdown() {
+    if [ -z "$QQ" ]; then
+        echo "请传入QQ号,如 $0 startdown 3116556127"
+        exit 1
+    fi
+
+    if [ ! -f "/etc/init.d/nc_${QQ}" ]; then
+        echo "不存在QQ ${QQ}的开机自启动服务"
+        exit 1
+    fi
+
+    update-rc.d nc_${QQ} remove
+    rm -f /etc/init.d/nc_${QQ}
+    echo "已取消QQ ${QQ}的开机自启动服务"
+}
+
+update() {
+    bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
+}
+
+rebuild() {
+    bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
+}
+
+remove() {
+    if command -v apt &> /dev/null; then
+        apt remove linuxqq -y
+    elif command -v yum &> /dev/null; then
+        yum remove linuxqq -y
+    fi
+
+    rm -rf /opt/QQ
+    rm -rf /root/.config/QQ
+    rm -f /etc/init.d/napcat
+    echo "卸载完成"
+    echo "江湖不散，有缘再见。"
+}
+
+help() {
+    echo "使用方法: $0 {start|stop|restart|status|log|startup|startdown} QQ"
+}
+
+case "$1" in
+    start)
+        start
+        ;;
+    stop)
+        stop
+        ;;
+    restart)
+        restart
+        ;;
+    status)
+        status
+        ;;
+    log)
+        log
+        ;;
+    startup)
+        startup
+        ;;
+    startdown)
+        startdown
+        ;;
+    update)
+        update
+        ;;
+    rebuild)
+        rebuild
+        ;;
+    remove)
+        remove
+        ;;
+    help)
+        help
+        exit 0
+        ;;
+    *)
+        help
+        exit 1
+        ;;
+esac
+
+exit 0
