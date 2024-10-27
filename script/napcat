@@ -259,13 +259,21 @@ help() {
     echo "    napcat remove                         卸载 NAPCAT及QQ"
     echo "    napcat help                           查看此帮助"
     echo "    napcat oldhelp                       查看旧方法(若此脚本不生效)"
+    echo
+    echo "若为termux则需先进入容器内部, 请输入 proot-distro login napcat"
+    echo "或者输入proot-distro sh napcat -- bash -c \"脚本控制命令\""
+    echo "注意: 若在termux中使用screen则不能使用脚本管理多开, 请自行使用旧方法screen多开"
 }
 
 oldhelp() {
     echo -e "\n请输入 xvfb-run -a qq --no-sandbox 命令启动。"
     echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
     echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
-    echo "Napcat安装位置 $target_folder/napcat"
+    echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
+    echo "termux"
+    echo -e "\n请输入 proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\" 命令启动。"
+    echo "保持后台运行 请输入 screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"'"
+    echo "后台快速登录 请输入 screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"'"
     echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
 }
 
