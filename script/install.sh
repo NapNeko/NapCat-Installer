@@ -259,11 +259,11 @@ package_manager=$(detect_package_manager)
 # 开始安装基础依赖
 if [ "$package_manager" = "apt" ]; then
     sudo apt update -y
-    sudo apt install -y zip unzip jq curl xvfb screen xauth
+    sudo apt install -y zip unzip jq curl xvfb screen xauth procps
 elif [ "$package_manager" = "yum" ]; then
     # 安装epel, 因为某些包在自带源里缺失
     sudo yum install -y epel-release
-    sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen
+    sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng
 else
     echo "包管理器检查失败, 目前仅支持apt/yum。"
     exit 1
@@ -637,12 +637,7 @@ fi
 
 clear
 
-echo -e "\n安装完成, 请输入 napcat help 获取帮助。"
-echo "保持后台运行 请输入 napcat start"
-echo "后台快速登录 请输入 napcat start -q QQ账号"
-echo "注意, 若没有指定账号，您可能需要手动执行以下命令，否则不会连接dlc"
-echo " cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ账号.json"
+echo -e "\n安装完成, 请输入 /etc/init.d/napcat help 获取帮助。"
+echo "后台快速登录 请输入 /etc/init.d/napcat start QQ账号"
 echo "Napcat安装位置 $target_folder/napcat"
 echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
-echo "注意, 您可以随时使用screen -r napcat(qq号) 来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
-echo "如 screen -r napcat 或 screen -r napcat123456 "
