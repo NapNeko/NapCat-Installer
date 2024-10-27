@@ -233,7 +233,8 @@ remove() {
 }
 
 help() {
-    echo "使用方法: $0 {start|stop|restart|status|log|startup|startdown} QQ"
+    echo "使用方法: $0 {start|stop|restart|status|log|startup|startdown|update|rebuild|remove} QQ"
+    echo "          $0 {status|update|rebuild|remove|help}"
 }
 
 case "$1" in
