@@ -54,13 +54,19 @@ stop() {
         exit 1
     fi
 
-    if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
-        echo "DLC服务未运行"
-        rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+    pid_files=($(find /var/run/ -name 'napcat_*.pid'))
+
+    if [ ${#pid_files[@]} -le 1 ]; then
+        if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+            echo "DLC服务未运行"
+            rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+        else
+            echo "停止 napcatdlc 服务中..."
+            pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            echo "DLC服务已停止"
+        fi
     else
-        echo "停止 napcatdlc 服务中..."
-        pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
-        echo "DLC服务已停止"
+        echo "有其它账号运行中, 暂不停止DLC服务"
     fi
 
     if [ ! -f "$PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
