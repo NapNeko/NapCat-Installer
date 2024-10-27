@@ -245,7 +245,7 @@ help() {
     echo
     echo "使用方法: "
     echo "  napcat {start|stop|restart|status|log|startup|startdown} QQ"
-    echo "  napcat {status|update|rebuild|remove}"
+    echo "  napcat {status|update|rebuild|remove|help|oldhelp}"
     echo
     echo "    napcat start {QQ}                     启动对应QQ号的NAPCAT"
     echo "    napcat stop {QQ}                      停止对应QQ号的NAPCAT"
@@ -258,6 +258,15 @@ help() {
     echo "    napcat rebuild                        重建 NAPCAT及QQ"
     echo "    napcat remove                         卸载 NAPCAT及QQ"
     echo "    napcat help                           查看此帮助"
+    echo "    napcat oldhelp                       查看旧方法(若此脚本不生效)"
+}
+
+oldhelp() {
+    echo -e "\n请输入 xvfb-run -a qq --no-sandbox 命令启动。"
+    echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
+    echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
+    echo "Napcat安装位置 $target_folder/napcat"
+    echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
 }
 
 case "$1" in
@@ -293,6 +302,10 @@ case "$1" in
         ;;
     help)
         help
+        exit 0
+        ;;
+    oldhelp)
+        oldhelp
         exit 0
         ;;
     *)
