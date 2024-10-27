@@ -429,10 +429,10 @@ clean() {
 }
 
 install_napcat_cli() {
-    if [ -f "/usr/local/bin/napcat" ]; then
-        sudo rm -f /usr/local/bin/napcat
+    if [ -f "/etc/init.d/napcat" ]; then
+        sudo rm -f /etc/init.d/napcat
     fi
-    
+
     echo "安装NapCatQQ CLI..."   
     network_test "Github"
     default_file="./tmp/napcat"
@@ -465,13 +465,13 @@ install_napcat_cli() {
     fi
 
     echo "正在移动文件..."
-    sudo cp -f ./tmp/napcat /etc/init.d/napcat
+    sudo cp -f ./tmp/napcat /usr/local/bin/napcat
     if [ $? -ne 0 -a $? -ne 1 ]; then
         echo "文件移动失败, 请以root身份运行。"
         clean
         exit 1
     fi
-    sudo chmod +x /etc/init.d/napcat
+    sudo chmod +x /usr/local/bin/napcat
 }
 
 # 函数: 安装NapCatQQ DLC
@@ -637,7 +637,7 @@ fi
 
 clear
 
-echo -e "\n安装完成, 请输入 /etc/init.d/napcat help 获取帮助。"
-echo "后台快速登录 请输入 /etc/init.d/napcat start QQ账号"
+echo -e "\n安装完成, 请输入 napcat help 获取帮助。"
+echo "后台快速登录 请输入 napcat start QQ账号"
 echo "Napcat安装位置 $target_folder/napcat"
 echo "Napcat_DLC安装位置 $target_folder/napcat.packet"
