@@ -10,23 +10,22 @@ NC='\033[0m'
 
 QQ=$2
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
-CMD="/usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
+CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
 PID_FILE="/var/run/napcat_$QQ.pid"
 LOG_FILE="/var/log/napcat_$QQ.log"
 
 DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
-DLC_CMD="./napcat.packet.linux"
+DLC_CMD="sudo ./napcat.packet.linux"
 DLC_PID_FILE="/var/run/dlcnapcat.pid"
 DLC_LOG_FILE="/var/log/dlcnapcat.log"
-WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
 
 start() {
     if [ -z "$QQ" ]; then
         echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 start 3116556127${NC}"
         exit 1
     fi
-
-    if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+    WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
+    if [ -f "$DLC_PID_FILE" ] && sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
         echo -e "${GREEN}DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过${NC}"
     else
         cd "$DLC_WORK_DIR" || { echo -e "${RED}切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败${NC}"; return 1; }
@@ -38,7 +37,7 @@ start() {
         sleep 3
     fi
 
-    if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+    if [ -f "$PID_FILE" ] && sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
         echo -e "${RED}服务已运行 (PID: $(cat "$PID_FILE"))${NC}"
     else
         cp -f /opt/QQ/resources/app/app_launcher/napcat/config/napcat.json /opt/QQ/resources/app/app_launcher/napcat/config/napcat_$QQ.json
@@ -51,44 +50,44 @@ start() {
 
 stop() {
     if [ -z "$QQ" ]; then
-        if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+        if [ ! -f "$DLC_PID_FILE" ] || ! sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
             echo -e "${GREEN}DLC服务未运行${NC}"
-            rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
         else
             echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
-            pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            sudo pkill -9 -P $(cat "$DLC_PID_FILE") && sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
             echo -e "${RED}DLC服务已停止${NC}"
         fi
-        pid_files=($(find /var/run/ -name 'napcat_*.pid'))
+        pid_files=($(sudo find /var/run/ -name 'napcat_*.pid'))
         for pid_file in "${pid_files[@]}"; do
             echo -e "${MAGENTA}停止 napcat 服务 (PID: $(cat "$pid_file"))...${NC}"
-            pkill -9 -P $(cat "$pid_file") && rm -f "$pid_file"
+            sudo pkill -9 -P $(cat "$pid_file") && sudo rm -f "$pid_file"
         done
         echo -e "${RED}所有服务已停止${NC}"
-        exit 0
+        return 0
     fi
 
-    pid_files=($(find /var/run/ -name 'napcat_*.pid'))
+    pid_files=($(sudo find /var/run/ -name 'napcat_*.pid'))
 
     if [ ${#pid_files[@]} -le 1 ]; then
-        if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+        if [ ! -f "$DLC_PID_FILE" ] || ! sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
             echo -e "${GREEN}DLC服务未运行${NC}"
-            rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
         else
             echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
-            pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            sudo pkill -9 -P $(cat "$DLC_PID_FILE") && sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
             echo -e "${RED}DLC服务已停止${NC}"
         fi
     else
         echo -e "${RED}有其它账号运行中, 暂不停止DLC服务${RED}"
     fi
 
-    if [ ! -f "$PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+    if [ ! -f "$PID_FILE" ] || ! sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
         echo -e "${GREEN}服务未运行${NC}"
-        rm -f "$PID_FILE" && rm -f "$LOG_FILE"
+        sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
     else
         echo -e "${MAGENTA}停止 napcat 服务中 QQ: $QQ...${NC}"
-        pkill -9 -P $(cat "$PID_FILE") && rm -f "$PID_FILE" && rm -f "$LOG_FILE"
+        sudo pkill -9 -P $(cat "$PID_FILE") && sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
         echo -e "${RED}服务已停止${NC}"
     fi
 }
@@ -106,18 +105,19 @@ restart() {
 }
 
 status() {
-    if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+    if [ -f "$DLC_PID_FILE" ] && sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
         echo -e "${GREEN}DLC服务运行中 (PID: $(cat $DLC_PID_FILE))${NC}"
     else
         echo -e "${RED}DLC服务未运行${NC}"
     fi
+    WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
     echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
     if [ -z "$QQ" ]; then
         echo -e "${YELLOW}当前正在运行的服务有:${NC}"
         for pid_file in /var/run/napcat_*.pid; do
             if [ -f "$pid_file" ]; then
                 QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
-                if pkill -0 -P $(cat "$pid_file") > /dev/null 2>&1; then
+                if sudo pkill -0 -P $(cat "$pid_file") > /dev/null 2>&1; then
                     echo -e "${GREEN}$QQ 运行中 (PID: $(cat "$pid_file"))${NC}"
                 else
                     echo -e "${RED}$QQ 未运行${NC}"
@@ -125,7 +125,7 @@ status() {
             fi
         done
     else
-        if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+        if [ -f "$PID_FILE" ] && sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
             echo -e "${GREEN}服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))${NC}"
         else
             echo -e "${RED}服务未运行 QQ: $QQ${NC}"
@@ -182,7 +182,7 @@ DLC_LOG_FILE="/var/log/dlcnapcat.log"
 
 start() {
 
-    if [ ! -f "\$DLC_PID_FILE" ] && ! pkill -0 -P \$(cat "\$DLC_PID_FILE") > /dev/null 2>&1; then
+    if [ ! -f "\$DLC_PID_FILE" ] && ! sudo pkill -0 -P \$(cat "\$DLC_PID_FILE") > /dev/null 2>&1; then
         cd "\$DLC_WORK_DIR" || { echo "dlc error"; return 1; }
         exec \$DLC_CMD >> "\$DLC_LOG_FILE" 2>&1 &
         echo \$! > "\$DLC_PID_FILE"
@@ -190,7 +190,7 @@ start() {
         echo "dlc sucess"
     fi
 
-    if [ ! -f "\$PID_FILE" ] && ! pkill -0 -P \$(cat "\$PID_FILE") > /dev/null 2>&1; then
+    if [ ! -f "\$PID_FILE" ] && ! sudo pkill -0 -P \$(cat "\$PID_FILE") > /dev/null 2>&1; then
         exec \$CMD >> "\$LOG_FILE" 2>&1 &
         echo \$! > "\$PID_FILE"
         echo "nc sucess"
@@ -209,8 +209,8 @@ esac
 exit 0
 EOF
 
-    chmod +x /etc/init.d/nc_${QQ}
-    update-rc.d nc_${QQ} defaults
+    sudo chmod +x /etc/init.d/nc_${QQ}
+    sudo update-rc.d nc_${QQ} defaults
     echo -e "${MAGENTA}已添加QQ ${QQ}的开机自启动服务${NC}"
 }
 
@@ -225,32 +225,38 @@ startdown() {
         exit 1
     fi
 
-    update-rc.d nc_${QQ} remove
-    rm -f /etc/init.d/nc_${QQ}
+    sudo update-rc.d nc_${QQ} remove
+    sudo rm -f /etc/init.d/nc_${QQ}
     echo "${MAGENTA}已取消QQ ${QQ}的开机自启动服务${NC}"
 }
 
 update() {
     stop
-    bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
+    sudo bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
 }
 
 rebuild() {
     stop
-    bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
+    sudo bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
 }
 
 remove() {
     stop
     if command -v apt &> /dev/null; then
-        apt remove linuxqq -y
+        sudo apt remove linuxqq -y
     elif command -v yum &> /dev/null; then
-        yum remove linuxqq -y
+        sudo yum remove linuxqq -y
     fi
 
-    rm -rf /opt/QQ
-    rm -rf /root/.config/QQ
-    rm -f /etc/init.d/napcat
+    if command -v dpkg &> /dev/null; then
+        sudo dpkg -P linuxqq
+    elif command -v rpm &> /dev/null; then
+        sudo rpm -e --nodeps linuxqq
+    fi
+
+    sudo rm -rf /opt/QQ
+    sudo rm -rf /root/.config/QQ
+    sudo rm -f /etc/init.d/napcat
     echo "卸载完成"
     echo -e "${MAGENTA}江${RED}湖${GREEN}不${CYAN}散，${MAGENTA}有${RED}缘${GREEN}再${CYAN}见。${NC}"
 }
