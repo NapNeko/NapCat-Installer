@@ -637,9 +637,9 @@ install_napcat() {
         exit 1
     fi
 
-    webui_config="${target_folder}/webui.json"
-    if [ -f "$ext_file" ]; then
-        touch "${target_folder}/webui.json"
+    webui_config="${target_folder}/config/webui.json"
+    if [ -f "$webui_config" ]; then
+        touch "${target_folder}/config/webui.json"
     else
 cat <<EOF > "$webui_config"
 {
