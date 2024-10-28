@@ -637,6 +637,20 @@ install_napcat() {
         exit 1
     fi
 
+    webui_config="${target_folder}/webui.json"
+    if [ -f "$ext_file" ]; then
+        touch "${target_folder}/webui.json"
+    else
+cat <<EOF > "$webui_config"
+{
+    "host": "0.0.0.0",
+    "port": 6099,
+    "prefix": "",
+    "token": "napcat",
+    "loginRate": 5
+}
+EOF
+    fi
     clean
 }
 
@@ -668,13 +682,13 @@ else
         install_napcat
     fi
 fi
-WEB_TOKEN=$(jq -r '.token' ${target_folder}/napcat/config/webui.json)
+web_token=$(jq -r '.token' ${target_folder}/napcat/config/webui.json)
 #clear
 echo -e "\n安装完成, 请输入 ${GREEN}napcat help ${NC} 获取帮助。"
 echo -e "后台快速登录 请输入 ${GREEN}napcat start QQ账号 ${NC}"
 echo -e "Napcat安装位置 ${MAGENTA}$target_folder/napcat ${NC}"
 echo -e "Napcat_DLC安装位置 ${MAGENTA}$target_folder/napcat.packet ${NC}"
-echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
+echo -e "${GREEN}WEB_UI访问密钥为${RED} ${web_token} ${NC}"
 echo
 echo "旧方法: "
 echo -e "输入${GREEN} xvfb-run -a qq --no-sandbox ${NC}命令启动。"
