@@ -380,9 +380,24 @@ install_linuxqq() {
         # QQ自己声明的依赖不全...需要手动补全
         execute_command "sudo apt install -y libnss3" "安装libnss3"
         execute_command "sudo apt install -y libgbm1" "安装libgbm1"
-        # Ubuntu24.04开始libasound2已不存在, 这里偷懒尝试俩都装
-        execute_command "sudo apt install -y libasound2" "安装libasound2"
-        # sudo apt install -y libasound2t64
+        # Ubuntu24.04开始libasound2已不存在
+        echo -e "安装libasound2中..."
+        sudo apt install -y libasound2 > /dev/null 2>&1 &
+        wait $!
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}安装libasound2 成功${NC}"
+        else
+            echo -e "${RED}安装libasound2 失败${NC}"
+            echo -e "尝试安装libasound2t64中..."
+            sudo apt install -y libasound2t64 > /dev/null 2>&1 &
+            wait $!
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}安装libasound2 成功${NC}"
+            else
+                echo -e "${RED}安装libasound2t64 失败${NC}"
+                exit 1
+            fi
+        fi
         sudo rm -f QQ.deb
     fi
     update_linuxqq_config "$package_targetVer" "$target_build"
