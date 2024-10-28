@@ -383,7 +383,7 @@ install_linuxqq() {
         # Ubuntu24.04开始libasound2已不存在, 这里偷懒尝试俩都装
         execute_command "sudo apt install -y libasound2" "安装libasound2"
         # sudo apt install -y libasound2t64
-        rm -f QQ.deb
+        sudo rm -f QQ.deb
     fi
     update_linuxqq_config "$package_targetVer" "$target_build"
 }
@@ -442,12 +442,12 @@ modify_qq_config
 
 # 函数: 清理临时文件
 clean() {
-    rm -rf ./NapCat/
-    rm -rf ./tmp/
+    sudo rm -rf ./NapCat/
+    sudo rm -rf ./napcattmp/
     if [ $? -ne 0 ]; then
         echo -e "${RED}临时文件删除失败, 请手动删除 $default_file。${NC}"
     fi
-    rm -rf ./NapCat.Shell.zip
+    sudo rm -rf ./NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         echo -e "${RED}NapCatQQ压缩包删除失败, 请手动删除 $default_file。${NC}"
     fi
@@ -460,7 +460,7 @@ install_napcat_cli() {
 
     echo -e "${GREEN}安装NapCatQQ CLI...${NC}"   
     network_test "Github"
-    default_file="./tmp/napcat"
+    default_file="./napcattmp/napcat"
     echo -e "${MAGENTA}NapCatQQ CLI 下载链接: $napcat_cli_download_url${NC}"
     sudo curl -# -L "$napcat_cli_download_url" -o "$default_file"
 
@@ -490,7 +490,7 @@ install_napcat_cli() {
     fi
 
     echo -e "${GREEN}正在移动文件...${NC}"
-    sudo cp -f ./tmp/napcat /usr/local/bin/napcat
+    sudo cp -f ./napcattmp/napcat /usr/local/bin/napcat
     if [ $? -ne 0 -a $? -ne 1 ]; then
         echo -e "${RED}文件移动失败, 请以root身份运行。${NC}"
         clean
@@ -506,7 +506,7 @@ install_napcat_dlc() {
     # 网络测试    
     network_test "Github"
 
-    default_file="./tmp/napcat.packet.linux"
+    default_file="./napcattmp/napcat.packet.linux"
     echo -e "${MAGENTA}NapCatQQ DLC 下载链接: $napcat_dlc_download_url${NC}"
     sudo curl -# -L "$napcat_dlc_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
@@ -539,7 +539,7 @@ install_napcat_dlc() {
     fi
 
     echo -e "正在移动文件..."
-    sudo cp -f ./tmp/napcat.packet.linux "$target_folder/napcat.packet/"
+    sudo cp -f ./napcattmp/napcat.packet.linux "$target_folder/napcat.packet/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
         echo -e "${RED}文件移动失败, 请以root身份运行。${NC}"
         clean
@@ -547,8 +547,8 @@ install_napcat_dlc() {
     fi
 
     sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
-    jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
-    mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
+    sudo jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
+    sudo mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
 }
 
 # 函数: 安装NapCatQQ
@@ -568,14 +568,14 @@ install_napcat() {
 
     # 解压与清理
     mkdir ./NapCat/
-    mkdir ./tmp/
+    mkdir ./napcattmp/
 
     if [ -f "$default_file" ]; then
         echo -e "${GREEN}$default_file 成功下载。${NC}"
     else
         ext_file=$(basename "$napcat_download_url")
         if [ -f "$ext_file" ]; then
-            mv "$ext_file" "$default_file"
+            sudo mv "$ext_file" "$default_file"
             if [ $? -ne 0 ]; then
                 echo -e "${GREEN}$default_file 成功下载。${NC}"
             else
@@ -591,7 +591,7 @@ install_napcat() {
     fi
 
     echo -e "${GREEN}正在验证 $default_file..."
-    unzip -t "$default_file" > /dev/null 2>&1
+    sudo unzip -t "$default_file" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         echo -e "${RED}文件验证失败, 请检查错误。${NC}"
         clean
@@ -599,7 +599,7 @@ install_napcat() {
     fi
 
     echo -e "正在解压 $default_file..."
-    unzip -q -o -d ./tmp/NapCat.Shell NapCat.Shell.zip
+    sudo unzip -q -o -d ./napcattmp/NapCat.Shell NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         echo -e "${RED}文件解压失败, 请检查错误。${NC}"
         clean
@@ -611,7 +611,7 @@ install_napcat() {
     fi
 
     echo -e "正在移动文件..."
-    sudo cp -r -f ./tmp/NapCat.Shell/* "$target_folder/napcat/"
+    sudo cp -r -f ./napcattmp/NapCat.Shell/* "$target_folder/napcat/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
         echo -e "${RED}文件移动失败, 请以root身份运行。${NC}"
         clean
@@ -639,9 +639,9 @@ install_napcat() {
 
     webui_config="${target_folder}/napcat/config/webui.json"
     if [ -f "$webui_config" ]; then
-        touch "${target_folder}/napcat/config/webui.json"
+        sudo touch "${target_folder}/napcat/config/webui.json"
     else
-cat <<EOF > "$webui_config"
+sudo cat <<EOF > "$webui_config"
 {
     "host": "0.0.0.0",
     "port": 6099,
@@ -682,7 +682,7 @@ else
         install_napcat
     fi
 fi
-web_token=$(jq -r '.token' ${target_folder}/napcat/config/webui.json)
+web_token=$(sudo jq -r '.token' ${target_folder}/napcat/config/webui.json)
 #clear
 echo -e "\n安装完成, 请输入 ${GREEN}napcat help ${NC} 获取帮助。"
 echo -e "后台快速登录 请输入 ${GREEN}napcat start QQ账号 ${NC}"
