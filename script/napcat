@@ -63,6 +63,7 @@ stop() {
             pkill -9 -P $(cat "$pid_file") && rm -f "$pid_file"
         done
         echo -e "${RED}所有服务已停止${NC}"
+        eixt 0
     fi
 
     pid_files=($(find /var/run/ -name 'napcat_*.pid'))
