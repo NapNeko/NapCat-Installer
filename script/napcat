@@ -18,6 +18,7 @@ DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
 DLC_CMD="./napcat.packet.linux"
 DLC_PID_FILE="/var/run/dlcnapcat.pid"
 DLC_LOG_FILE="/var/log/dlcnapcat.log"
+WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
 
 start() {
     if [ -z "$QQ" ]; then
@@ -33,6 +34,7 @@ start() {
         exec $DLC_CMD >> "$DLC_LOG_FILE" 2>&1 &
         echo $! > "$DLC_PID_FILE"
         echo -e "${GREEN}DLC服务已启动 (PID: $(cat "$DLC_PID_FILE"))${NC}"
+        echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
         sleep 3
     fi
 
@@ -109,7 +111,7 @@ status() {
     else
         echo -e "${RED}DLC服务未运行${NC}"
     fi
-
+    echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
     if [ -z "$QQ" ]; then
         echo -e "${YELLOW}当前正在运行的服务有:${NC}"
         for pid_file in /var/run/napcat_*.pid; do
