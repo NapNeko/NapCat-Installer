@@ -1,5 +1,13 @@
 #!/bin/bash
 
+MAGENTA='\033[0;1;35;95m'
+RED='\033[0;1;31;91m'
+YELLOW='\033[0;1;33;93m'
+GREEN='\033[0;1;32;92m'
+CYAN='\033[0;1;36;96m'
+BLUE='\033[0;1;34;94m'
+NC='\033[0m'
+
 QQ=$2
 PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
 CMD="/usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
@@ -13,70 +21,82 @@ DLC_LOG_FILE="/var/log/dlcnapcat.log"
 
 start() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 start 3116556127"
+        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 start 3116556127${NC}"
         exit 1
     fi
 
     if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-        echo "DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过"
+        echo -e "${GREEN}DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过${NC}"
     else
-        cd "$DLC_WORK_DIR" || { echo "切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败"; return 1; }
-        echo "启动 napcatdlc 服务中..."
+        cd "$DLC_WORK_DIR" || { echo -e "${RED}切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败${NC}"; return 1; }
+        echo -e "${MAGENTA}启动 napcatdlc 服务中...${NC}"
         exec $DLC_CMD >> "$DLC_LOG_FILE" 2>&1 &
         echo $! > "$DLC_PID_FILE"
-        echo "DLC服务已启动 (PID: $(cat "$DLC_PID_FILE"))"
+        echo -e "${GREEN}DLC服务已启动 (PID: $(cat "$DLC_PID_FILE"))${NC}"
         sleep 3
     fi
 
     if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
-        echo "服务已运行 (PID: $(cat "$PID_FILE"))"
+        echo -e "${RED}服务已运行 (PID: $(cat "$PID_FILE"))${NC}"
     else
         cp -f /opt/QQ/resources/app/app_launcher/napcat/config/napcat.json /opt/QQ/resources/app/app_launcher/napcat/config/napcat_$QQ.json
-        echo "启动 napcat 服务中 QQ: $QQ..."
+        echo -e "${MAGENTA}启动 napcat 服务中 QQ: $QQ...${NC}"
         exec $CMD >> "$LOG_FILE" 2>&1 &
         echo $! > "$PID_FILE"
-        echo "服务已启动 (PID: $(cat "$PID_FILE"))"
+        echo -e "${GREEN}服务已启动 (PID: $(cat "$PID_FILE"))${NC}"
     fi
 }
 
 stop() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 stop 3116556127"
-        exit 1
+        if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
+            echo -e "${GREEN}DLC服务未运行${NC}"
+            rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+        else
+            echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
+            pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
+            echo -e "${RED}DLC服务已停止${NC}"
+        fi
+        pid_files=($(find /var/run/ -name 'napcat_*.pid'))
+        for pid_file in "${pid_files[@]}"; do
+            echo -e "${MAGENTA}停止 napcat 服务 (PID: $(cat "$pid_file"))...${NC}"
+            pkill -9 -P $(cat "$pid_file") && rm -f "$pid_file"
+        done
+        echo -e "${RED}所有服务已停止${NC}"
     fi
 
     pid_files=($(find /var/run/ -name 'napcat_*.pid'))
 
     if [ ${#pid_files[@]} -le 1 ]; then
         if [ ! -f "$DLC_PID_FILE" ] || ! pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-            echo "DLC服务未运行"
+            echo -e "${GREEN}DLC服务未运行${NC}"
             rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
         else
-            echo "停止 napcatdlc 服务中..."
+            echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
             pkill -9 -P $(cat "$DLC_PID_FILE") && rm -f "$DLC_PID_FILE" && rm -f "$DLC_LOG_FILE"
-            echo "DLC服务已停止"
+            echo -e "${RED}DLC服务已停止${NC}"
         fi
     else
-        echo "有其它账号运行中, 暂不停止DLC服务"
+        echo -e "${RED}有其它账号运行中, 暂不停止DLC服务${RED}"
     fi
 
     if [ ! -f "$PID_FILE" ] || ! pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
-        echo "服务未运行"
+        echo -e "${GREEN}服务未运行${NC}"
         rm -f "$PID_FILE" && rm -f "$LOG_FILE"
     else
-        echo "停止 napcat 服务中 QQ: $QQ..."
+        echo -e "${MAGENTA}停止 napcat 服务中 QQ: $QQ...${NC}"
         pkill -9 -P $(cat "$PID_FILE") && rm -f "$PID_FILE" && rm -f "$LOG_FILE"
-        echo "服务已停止"
+        echo -e "${RED}服务已停止${NC}"
     fi
 }
 
 restart() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 restart 3116556127"
+        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 restart 3116556127${NC}"
         exit 1
     fi
 
-    echo "重启 napcat 服务中 QQ: $QQ..."
+    echo "${MAGENTA}重启 napcat 服务中 QQ: $QQ...${NC}"
     stop
     sleep 2
     start
@@ -84,35 +104,35 @@ restart() {
 
 status() {
     if [ -f "$DLC_PID_FILE" ] && pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-        echo "DLC服务运行中 (PID: $(cat $DLC_PID_FILE))"
+        echo -e "${GREEN}DLC服务运行中 (PID: $(cat $DLC_PID_FILE))${NC}"
     else
-        echo "DLC服务未运行"
+        echo -e "${RED}DLC服务未运行${NC}"
     fi
 
     if [ -z "$QQ" ]; then
-        echo "当前正在运行的服务有:"
+        echo -e "${YELLOW}当前正在运行的服务有:${NC}"
         for pid_file in /var/run/napcat_*.pid; do
             if [ -f "$pid_file" ]; then
                 QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
                 if pkill -0 -P $(cat "$pid_file") > /dev/null 2>&1; then
-                    echo "$QQ 运行中 (PID: $(cat "$pid_file"))"
+                    echo -e "${GREEN}$QQ 运行中 (PID: $(cat "$pid_file"))${NC}"
                 else
-                    echo "$QQ 未运行"
+                    echo -e "${RED}$QQ 未运行${NC}"
                 fi
             fi
         done
     else
         if [ -f "$PID_FILE" ] && pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
-            echo "服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))"
+            echo -e "${GREEN}服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))${NC}"
         else
-            echo "服务未运行 QQ: $QQ"
+            echo -e "${RED}服务未运行 QQ: $QQ${NC}"
         fi
     fi
 }
 
 log() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 log 3116556127"
+        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 log 3116556127${NC}"
         exit 1
     fi
 
@@ -120,18 +140,18 @@ log() {
         tail -n 50 "$LOG_FILE"
         tail -f "$LOG_FILE"
     else
-        echo "日志文件不存在: $LOG_FILE"
+        echo -e "${RED}日志文件不存在: $LOG_FILE${NC}"
     fi
 }
 
 startup() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 startup 3116556127"
+        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 startup 3116556127${NC}"
         exit 1
     fi
 
     if [ -f "/etc/init.d/nc_${QQ}" ]; then
-        echo "已存在QQ${QQ}的开机自启动服务"
+        echo -e "${GREEN}已存在QQ${QQ}的开机自启动服务${NC}"
         exit 1
     fi
 
@@ -188,34 +208,37 @@ EOF
 
     chmod +x /etc/init.d/nc_${QQ}
     update-rc.d nc_${QQ} defaults
-    echo "已添加QQ ${QQ}的开机自启动服务"
+    echo -e "${MAGENTA}已添加QQ ${QQ}的开机自启动服务${NC}"
 }
 
 startdown() {
     if [ -z "$QQ" ]; then
-        echo "请传入QQ号,如 $0 startdown 3116556127"
+        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 startdown 3116556127${NC}"
         exit 1
     fi
 
     if [ ! -f "/etc/init.d/nc_${QQ}" ]; then
-        echo "不存在QQ ${QQ}的开机自启动服务"
+        echo "${RED}不存在QQ ${QQ}的开机自启动服务${NC}"
         exit 1
     fi
 
     update-rc.d nc_${QQ} remove
     rm -f /etc/init.d/nc_${QQ}
-    echo "已取消QQ ${QQ}的开机自启动服务"
+    echo "${MAGENTA}已取消QQ ${QQ}的开机自启动服务${NC}"
 }
 
 update() {
+    stop
     bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
 }
 
 rebuild() {
+    stop
     bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
 }
 
 remove() {
+    stop
     if command -v apt &> /dev/null; then
         apt remove linuxqq -y
     elif command -v yum &> /dev/null; then
@@ -226,55 +249,61 @@ remove() {
     rm -rf /root/.config/QQ
     rm -f /etc/init.d/napcat
     echo "卸载完成"
-    echo "江湖不散，有缘再见。"
+    echo -e "${MAGENTA}江${RED}湖${GREEN}不${CYAN}散，${MAGENTA}有${RED}缘${GREEN}再${CYAN}见。${NC}"
 }
 
 help() {
     clear
-    echo -e ' \033[0;1;35;95m┌\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m\033[0;1;31;91m─┐\033[0m'
-    echo -e ' \033[0;1;35;95m│\033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m \033[0;1;31;91m│\033[0m'
-    echo -e ' \033[0;1;31;91m│\033[0;1;33;93m██\033[0;1;32;92m█╗\033[0;1;36;96m  \033[0;1;34;94m █\033[0;1;35;95m█╗\033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m █\033[0;1;36;96m██\033[0;1;34;94m██\033[0;1;35;95m╗ \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m██\033[0;1;36;96m██\033[0;1;34;94m██\033[0;1;35;95m╗ \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m █\033[0;1;36;96m██\033[0;1;34;94m██\033[0;1;35;95m█╗\033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m █\033[0;1;36;96m██\033[0;1;34;94m██\033[0;1;35;95m╗ \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m██\033[0;1;36;96m██\033[0;1;34;94m██\033[0;1;35;95m██\033[0;1;31;91m╗\033[0;1;33;93m│\033[0m'
-    echo -e ' \033[0;1;33;93m│\033[0;1;32;92m██\033[0;1;36;96m██\033[0;1;34;94m╗ \033[0;1;35;95m █\033[0;1;31;91m█║\033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m██\033[0;1;34;94m╔═\033[0;1;35;95m═█\033[0;1;31;91m█╗\033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m██\033[0;1;34;94m╔═\033[0;1;35;95m═█\033[0;1;31;91m█╗\033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m██\033[0;1;34;94m╔═\033[0;1;35;95m══\033[0;1;31;91m═╝\033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m██\033[0;1;34;94m╔═\033[0;1;35;95m═█\033[0;1;31;91m█╗\033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m╚═\033[0;1;34;94m═█\033[0;1;35;95m█╔\033[0;1;31;91m══\033[0;1;33;93m╝\033[0;1;33;93m│\033[0m'
-    echo -e ' \033[0;1;32;92m│\033[0;1;36;96m██\033[0;1;34;94m╔█\033[0;1;35;95m█╗\033[0;1;31;91m █\033[0;1;33;93m█║\033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m██\033[0;1;35;95m██\033[0;1;31;91m██\033[0;1;33;93m█║\033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m██\033[0;1;35;95m██\033[0;1;31;91m██\033[0;1;33;93m╔╝\033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m██\033[0;1;35;95m║ \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m██\033[0;1;35;95m██\033[0;1;31;91m██\033[0;1;33;93m█║\033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m █\033[0;1;31;91m█║\033[0;1;33;93m  \033[0;1;32;92m \033[0;1;32;92m│\033[0m'
-    echo -e ' \033[0;1;36;96m│\033[0;1;34;94m██\033[0;1;35;95m║╚\033[0;1;31;91m██\033[0;1;33;93m╗█\033[0;1;32;92m█║\033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m██\033[0;1;31;91m╔═\033[0;1;33;93m═█\033[0;1;32;92m█║\033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m██\033[0;1;31;91m╔═\033[0;1;33;93m══\033[0;1;32;92m╝ \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m██\033[0;1;31;91m║ \033[0;1;33;93m  \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m██\033[0;1;31;91m╔═\033[0;1;33;93m═█\033[0;1;32;92m█║\033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m █\033[0;1;33;93m█║\033[0;1;32;92m  \033[0;1;36;96m \033[0;1;36;96m│\033[0m'
-    echo -e ' \033[0;1;34;94m│\033[0;1;35;95m██\033[0;1;31;91m║ \033[0;1;33;93m╚█\033[0;1;32;92m██\033[0;1;36;96m█║\033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m██\033[0;1;33;93m║ \033[0;1;32;92m █\033[0;1;36;96m█║\033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m██\033[0;1;33;93m║ \033[0;1;32;92m  \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m╚█\033[0;1;33;93m██\033[0;1;32;92m██\033[0;1;36;96m█╗\033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m██\033[0;1;33;93m║ \033[0;1;32;92m █\033[0;1;36;96m█║\033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m █\033[0;1;32;92m█║\033[0;1;36;96m  \033[0;1;34;94m \033[0;1;34;94m│\033[0m'
-    echo -e ' \033[0;1;35;95m│\033[0;1;31;91m╚═\033[0;1;33;93m╝ \033[0;1;32;92m ╚\033[0;1;36;96m══\033[0;1;34;94m═╝\033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m╚═\033[0;1;32;92m╝ \033[0;1;36;96m ╚\033[0;1;34;94m═╝\033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m╚═\033[0;1;32;92m╝ \033[0;1;36;96m  \033[0;1;34;94m  \033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m ╚\033[0;1;32;92m══\033[0;1;36;96m══\033[0;1;34;94m═╝\033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m╚═\033[0;1;32;92m╝ \033[0;1;36;96m ╚\033[0;1;34;94m═╝\033[0;1;35;95m  \033[0;1;31;91m  \033[0;1;33;93m  \033[0;1;32;92m ╚\033[0;1;36;96m═╝\033[0;1;34;94m  \033[0;1;35;95m \033[0;1;35;95m│\033[0m'
-    echo -e ' \033[0;1;31;91m└\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m──\033[0;1;33;93m──\033[0;1;32;92m──\033[0;1;36;96m──\033[0;1;34;94m──\033[0;1;35;95m──\033[0;1;31;91m\033[0;1;33;93m─┘\033[0m'
+    echo -e " ${MAGENTA}┌${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}${RED}─┐${NC}"
+    echo -e " ${MAGENTA}│${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA} ${RED}│${NC}"
+    echo -e " ${RED}│${YELLOW}██${GREEN}█╗${CYAN}  ${BLUE} █${MAGENTA}█╗${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN}██${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}█╗${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN}██${CYAN}██${BLUE}██${MAGENTA}██${RED}╗${YELLOW}│${NC}"
+    echo -e " ${YELLOW}│${GREEN}██${CYAN}██${BLUE}╗ ${MAGENTA} █${RED}█║${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}══${RED}═╝${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}╚═${BLUE}═█${MAGENTA}█╔${RED}══${YELLOW}╝${YELLOW}│${NC}"
+    echo -e " ${GREEN}│${CYAN}██${BLUE}╔█${MAGENTA}█╗${RED} █${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}╔╝${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}║ ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA} █${RED}█║${YELLOW}  ${GREEN} ${GREEN}│${NC}"
+    echo -e " ${CYAN}│${BLUE}██${MAGENTA}║╚${RED}██${YELLOW}╗█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}═█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}══${GREEN}╝ ${CYAN}  ${BLUE}  ${MAGENTA}██${RED}║ ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}═█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}  ${RED} █${YELLOW}█║${GREEN}  ${CYAN} ${CYAN}│${NC}"
+    echo -e " ${BLUE}│${MAGENTA}██${RED}║ ${YELLOW}╚█${GREEN}██${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN} █${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}╚█${YELLOW}██${GREEN}██${CYAN}█╗${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN} █${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW} █${GREEN}█║${CYAN}  ${BLUE} ${BLUE}│${NC}"
+    echo -e " ${MAGENTA}│${RED}╚═${YELLOW}╝ ${GREEN} ╚${CYAN}══${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN} ╚${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW} ╚${GREEN}══${CYAN}══${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN} ╚${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN} ╚${CYAN}═╝${BLUE}  ${MAGENTA} ${MAGENTA}│${NC}"
+    echo -e " ${RED}└${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}${YELLOW}─┘${NC}"
     echo
-    echo "napcat 控制脚本"
+    echo -e "${MAGENTA}napcat 控制脚本${NC}"
     echo
-    echo "使用方法: "
-    echo "  napcat {start|stop|restart|status|log|startup|startdown} QQ"
-    echo "  napcat {status|update|rebuild|remove|help|oldhelp}"
+    echo -e "${MAGENTA}使用方法: ${NC}"
+    echo -e "${CYAN}  napcat {start|stop|restart|status|log|startup|startdown} QQ${NC}"
+    echo -e "${CYAN}  napcat {status|update|rebuild|remove|help|oldhelp}${NC}"
     echo
-    echo "    napcat start {QQ}                     启动对应QQ号的NAPCAT"
-    echo "    napcat stop {QQ}                      停止对应QQ号的NAPCAT"
-    echo "    napcat restart {QQ}                   重启对应QQ号的NAPCAT"
-    echo "    napcat status {QQ}[可选]              查看所有[对应QQ号]的NAPCAT"
-    echo "    napcat log {QQ}                       查看对应QQ号的NAPCAT日志"
-    echo "    napcat startup {QQ}                   添加开机自启动对应QQ号的NAPCAT"
-    echo "    napcat startdown {QQ}                 取消开机自启动对应QQ号的NAPCAT"
-    echo "    napcat update                         更新 NAPCAT及QQ"
-    echo "    napcat rebuild                        重建 NAPCAT及QQ"
-    echo "    napcat remove                         卸载 NAPCAT及QQ"
-    echo "    napcat help                           查看此帮助"
-    echo "    napcat oldhelp                       查看旧方法(若此脚本不生效)"
+    echo -e " ${GREEN}   napcat start {QQ}                     ${MAGENTA}启动对应QQ号的NAPCAT${NC}"
+    echo -e " ${GREEN}   napcat stop {QQ}[可选]                ${MAGENTA}停止所有[对应QQ号]的NAPCAT及DLC${NC}"
+    echo -e " ${GREEN}   napcat restart {QQ}                   ${MAGENTA}重启对应QQ号的NAPCAT${NC}"
+    echo -e " ${GREEN}   napcat status {QQ}[可选]              ${MAGENTA}查看所有[对应QQ号]的NAPCAT${NC}"
+    echo -e " ${GREEN}   napcat log {QQ}                       ${MAGENTA}查看对应QQ号的NAPCAT日志${NC}"
+    echo -e " ${GREEN}   napcat startup {QQ}                   ${MAGENTA}添加开机自启动对应QQ号的NAPCAT及DLC${NC}"
+    echo -e " ${GREEN}   napcat startdown {QQ}                 ${MAGENTA}取消开机自启动对应QQ号的NAPCAT及DLC${NC}"
+    echo -e " ${GREEN}   napcat update                         ${MAGENTA}更新 NAPCAT及QQ${NC}"
+    echo -e " ${GREEN}   napcat rebuild                        ${MAGENTA}重建 NAPCAT及QQ${NC}"
+    echo -e " ${GREEN}   napcat remove                         ${MAGENTA}卸载 NAPCAT及QQ${NC}"
+    echo -e " ${GREEN}   napcat help                           ${MAGENTA}查看此帮助${NC}"
+    echo -e " ${GREEN}   napcat oldhelp                        ${MAGENTA}查看旧方法(若此脚本不生效)${NC}"
     echo
-    echo "若为termux则需先进入容器内部, 请输入 proot-distro login napcat"
-    echo "或者输入proot-distro sh napcat -- bash -c \"脚本控制命令\""
-    echo "注意: 若在termux中使用screen则不能使用脚本管理多开, 请自行使用旧方法screen多开"
+    # echo -e "若为termux${NC}则需先进入容器内部, 请输入${GREEN} proot-distro login napcat${NC}"
+    # echo -e "或者输入proot-distro sh napcat -- bash -c \"脚本控制命令\"${NC}"
+    # echo -e " ${RED}注意: 若在termux中使用screen则不能使用脚本管理多开, 请自行使用旧方法screen多开${NC}"
 }
 
 oldhelp() {
-    echo -e "\n请输入 xvfb-run -a qq --no-sandbox 命令启动。"
-    echo "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\""
-    echo "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\""
-    echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
-    echo "termux"
-    echo -e "\n请输入 proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\" 命令启动。"
-    echo "保持后台运行 请输入 screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"'"
-    echo "后台快速登录 请输入 screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"'"
-    echo "注意, 您可以随时使用screen -r napcat来进入后台进程并使用ctrl + a + d离开(离开不会关闭后台进程)。"
+    echo -e "输入${GREEN} xvfb-run -a qq --no-sandbox ${NC}命令启动。"
+    echo -e "保持后台运行 请输入${GREEN} screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" ${NC}"
+    echo -e "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" ${NC}"
+    echo -e "注意, 您可以随时使用${GREEN} screen -r napcat ${NC}来进入后台进程并使用${GREEN} ctrl + a + d ${NC}离开(离开不会关闭后台进程)。"
+    echo -e "停止后台运行 请输入${GREEN} screen -S napcat -X quit${NC}"
+    echo
+    echo -e "注意, 您需要手动执行以下命令${GREEN} cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json${NC}"
+    echo -e "输入${GREEN} env -C $target_folder/napcat.packet ./napcat.packet.linux ${NC}命令启动DLC。"
+    echo -e "保持后台运行 请输入${GREEN} screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\"${NC}"
+    echo -e "停止后台运行 请输入${GREEN} screen -S napcatdlc -X quit${NC}"
+    # echo " termux ${NC}"
+    # echo -e "\n请输入${GREEN} proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"${NC} 命令启动。"
+    # echo "保持后台运行 请输入${GREEN} screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"'${NC}"
+    # echo "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"'${NC}"
+    # echo "注意, 您可以随时使用${GREEN}screen -r napcat ${NC}来进入后台进程并使用${GREEN} ctrl + a + d ${NC}离开(离开不会关闭后台进程)。"
 }
 
 case "$1" in
