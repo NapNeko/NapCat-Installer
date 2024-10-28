@@ -644,19 +644,16 @@ install_napcat() {
 
     if [ "$proot" = "y" ]; then
         echo -e "${RED}当前环境为proot, 跳过安装DLC。${NC}"
-    elif [ "$proot" = "n" ]; then
+    else
         install_napcat_dlc
         install_napcat_cli
-    else
-        echo -e "${RED}输入错误, 请重新安装${NC}"
-        exit 1
     fi
 
     webui_config="${target_folder}/napcat/config/webui.json"
     if [ -f "$webui_config" ]; then
         sudo touch "${target_folder}/napcat/config/webui.json"
     else
-sudo cat <<EOF > "$webui_config"
+cat <<EOF > "$webui_config"
 {
     "host": "0.0.0.0",
     "port": 6099,
