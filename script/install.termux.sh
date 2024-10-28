@@ -46,4 +46,4 @@ echo -e "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c 'proot-
 echo -e "进入容器内部 请输入${GREEN} proot-distro login napcat"
 echo -e "容器数据位置MAGENTA /data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/napcat${NC}"
 echo -e "Napcat安装位置(容器外真实路径)MAGENTA /data/data/com.termux/files/usr/var/lib/proot-distro/installed-rootfs/napcat/opt/QQ/resources/app/app_launcher/napcat${NC}"
-echo-e "注意, 您可以随时使用${GREEN}screen -r napcat${NC}来进入后台进程并使用${GREEN}ctrl + a + d${NC}离开(离开不会关闭后台进程)。"
+echo -e "注意, 您可以随时使用${GREEN}screen -r napcat${NC}来进入后台进程并使用${GREEN}ctrl + a + d${NC}离开(离开不会关闭后台进程)。"
