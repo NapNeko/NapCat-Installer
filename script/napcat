@@ -28,6 +28,7 @@ start() {
     if [ -f "$DLC_PID_FILE" ] && sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
         echo -e "${GREEN}DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过${NC}"
     else
+        touch "$DLC_PID_FILE"
         cd "$DLC_WORK_DIR" || { echo -e "${RED}切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败${NC}"; return 1; }
         echo -e "${MAGENTA}启动 napcatdlc 服务中...${NC}"
         exec $DLC_CMD >> "$DLC_LOG_FILE" 2>&1 &
@@ -40,6 +41,7 @@ start() {
     if [ -f "$PID_FILE" ] && sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
         echo -e "${RED}服务已运行 (PID: $(cat "$PID_FILE"))${NC}"
     else
+        touch "$PID_FILE"
         cp -f /opt/QQ/resources/app/app_launcher/napcat/config/napcat.json /opt/QQ/resources/app/app_launcher/napcat/config/napcat_$QQ.json
         echo -e "${MAGENTA}启动 napcat 服务中 QQ: $QQ...${NC}"
         exec $CMD >> "$LOG_FILE" 2>&1 &
@@ -98,7 +100,7 @@ restart() {
         exit 1
     fi
 
-    echo "${MAGENTA}重启 napcat 服务中 QQ: $QQ...${NC}"
+    echo -e "${MAGENTA}重启 napcat 服务中 QQ: $QQ...${NC}"
     stop
     sleep 2
     start
@@ -181,20 +183,17 @@ DLC_PID_FILE="/var/run/dlcnapcat.pid"
 DLC_LOG_FILE="/var/log/dlcnapcat.log"
 
 start() {
+    touch "\$DLC_PID_FILE"
+    cd "\$DLC_WORK_DIR" || { echo "dlc error"; return 1; }
+    exec \$DLC_CMD >> "\$DLC_LOG_FILE" 2>&1 &
+    echo \$! > "\$DLC_PID_FILE"
+    sleep 3
+    echo "dlc sucess"
 
-    if [ ! -f "\$DLC_PID_FILE" ] && ! sudo pkill -0 -P \$(cat "\$DLC_PID_FILE") > /dev/null 2>&1; then
-        cd "\$DLC_WORK_DIR" || { echo "dlc error"; return 1; }
-        exec \$DLC_CMD >> "\$DLC_LOG_FILE" 2>&1 &
-        echo \$! > "\$DLC_PID_FILE"
-        sleep 3
-        echo "dlc sucess"
-    fi
-
-    if [ ! -f "\$PID_FILE" ] && ! sudo pkill -0 -P \$(cat "\$PID_FILE") > /dev/null 2>&1; then
-        exec \$CMD >> "\$LOG_FILE" 2>&1 &
-        echo \$! > "\$PID_FILE"
-        echo "nc sucess"
-    fi
+    touch "\$PID_FILE"
+    exec \$CMD >> "\$LOG_FILE" 2>&1 &
+    echo \$! > "\$PID_FILE"
+    echo "nc sucess"
 }
 
 case "\$1" in
@@ -221,13 +220,13 @@ startdown() {
     fi
 
     if [ ! -f "/etc/init.d/nc_${QQ}" ]; then
-        echo "${RED}不存在QQ ${QQ}的开机自启动服务${NC}"
+        echo -e "${RED}不存在QQ ${QQ}的开机自启动服务${NC}"
         exit 1
     fi
 
     sudo update-rc.d nc_${QQ} remove
     sudo rm -f /etc/init.d/nc_${QQ}
-    echo "${MAGENTA}已取消QQ ${QQ}的开机自启动服务${NC}"
+    echo -e "${MAGENTA}已取消QQ ${QQ}的开机自启动服务${NC}"
 }
 
 update() {
