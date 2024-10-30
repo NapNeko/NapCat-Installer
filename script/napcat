@@ -255,7 +255,7 @@ remove() {
 
     sudo rm -rf /opt/QQ
     sudo rm -rf /root/.config/QQ
-    sudo rm -f /etc/init.d/napcat
+    sudo rm -f /usr/local/bin/napcat
     echo "卸载完成"
     echo -e "${MAGENTA}江${RED}湖${GREEN}不${CYAN}散，${MAGENTA}有${RED}缘${GREEN}再${CYAN}见。${NC}"
 }
