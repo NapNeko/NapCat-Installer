@@ -37,7 +37,7 @@ function log() {
     message="[${time}]: $1 "
 
     case "$1" in
-        *"失败"*|*"错误"*|*"请使用 root 或 sudo 权限运行此脚本"*|*"请参阅官方文档，选择受支持的系统。"*)
+        *"失败"*|*"错误"*|*"sudo不存在"*|*"当前用户不是root用户"*|*"无法连接"*)
             echo -e "${RED}${message}${NC}" 2>&1 | tee -a "${CURRENT_DIR}"/install.log
             ;;
         *"成功"*)
@@ -110,6 +110,15 @@ function detect_package_installer() {
     elif command -v rpm &> /dev/null; then
         package_installer="rpm"
     fi
+}
+
+function create_tmp_folder() {
+    if [[ -d "./NapCat/" ]] || [[ -d "./napcattmp/" ]] ; then
+        log "文件夹已存在(./NapCat/及./napcattmp/), 请重命名后重新执行脚本防止误删"
+        exit 1
+    fi
+    mkdir -p ./NapCat/
+    mkdir -p ./napcattmp/
 }
 
 # 函数: 清理临时文件
@@ -542,8 +551,7 @@ function install_napcat() {
         exit 1
     fi
 
-    mkdir ./NapCat/
-    mkdir ./napcattmp/
+    create_tmp_folder
 
     if [ -f "$default_file" ]; then
         log "$default_file 成功下载。"
@@ -642,7 +650,7 @@ function install_napcat_dlc() {
     
     # 网络测试    
     network_test "Github"
-    mkdir -p ./napcattmp/
+    create_tmp_folder
     default_file="napcat.packet.linux"
     log "NapCatQQ DLC 下载链接: $napcat_dlc_download_url"
     sudo curl -L "$napcat_dlc_download_url" -o "./napcattmp/${default_file}"
@@ -672,7 +680,7 @@ function install_napcat_dlc() {
     fi
 
     if [ ! -d "$target_folder/napcat.packet" ]; then
-        sudo mkdir "$target_folder/napcat.packet/"
+        sudo mkdir -p "$target_folder/napcat.packet"
     fi
 
     log "正在移动文件..."
@@ -684,10 +692,16 @@ function install_napcat_dlc() {
     else
         log "移动文件成功"
     fi
-    rm -rf ./napcattmp/napcat.packet.linux
+
     sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
-    sudo jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
-    sudo mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
+
+    if [[ -f "$target_folder/napcat/config/napcat.json" ]] ; then
+        log "添加packetServer"
+        sudo jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
+        sudo mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
+    else
+        log "未发现napcat.json, 跳过添加packetServer"
+    fi
     clean
 }
 
@@ -696,7 +710,7 @@ function install_napcat_cli() {
     if [ -f "/etc/init.d/napcat" ]; then
         sudo rm -f /etc/init.d/napcat
     fi
-
+    create_tmp_folder
     log "安装NapCatQQ CLI..."   
     network_test "Github"
     default_file="napcat"
@@ -737,7 +751,7 @@ function install_napcat_cli() {
     else
         log "移动文件成功"
     fi
-    rm -rf ./napcattmp/napcat
+
     sudo chmod +x /usr/local/bin/napcat
     clean
 }
