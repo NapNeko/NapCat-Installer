@@ -793,6 +793,7 @@ function enhance() {
                 whiptail --title "Napcat Installer" --msgbox "    安装DLC完成" 8 24
                 ;;
             "2")
+                install_napcat_cli
                 whiptail --title "Napcat Installer" --msgbox "    安装CLI完成" 8 24
                 ;;
             "3")
