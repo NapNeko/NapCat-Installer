@@ -642,21 +642,21 @@ function install_napcat_dlc() {
     
     # 网络测试    
     network_test "Github"
-
+    mkdir -p ./napcattmp/
     default_file="napcat.packet.linux"
     log "NapCatQQ DLC 下载链接: $napcat_dlc_download_url"
-    sudo curl -L "$napcat_dlc_download_url" -o "${default_file}"
+    sudo curl -L "$napcat_dlc_download_url" -o "./napcattmp/${default_file}"
     if [ $? -ne 0 ]; then
         log "文件下载失败, 请检查错误。"
         exit 1
     fi
 
-    if [ -f "${default_file}" ]; then
+    if [ -f "./napcattmp/${default_file}" ]; then
         log "$default_file 成功下载。"
     else
         ext_file=$(basename "$napcat_dlc_download_url")
         if [ -f "$ext_file" ]; then
-            mv "$ext_file" "${default_file}"
+            mv "$ext_file" "./napcattmp/${default_file}"
             if [ $? -ne 0 ]; then
                 log "$default_file 成功下载。"
             else
@@ -676,7 +676,7 @@ function install_napcat_dlc() {
     fi
 
     log "正在移动文件..."
-    sudo cp -f ./napcat.packet.linux "$target_folder/napcat.packet/"
+    sudo cp -f ./napcattmp/napcat.packet.linux "$target_folder/napcat.packet/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
         log "文件移动失败, 请以root身份运行。"
         clean
@@ -684,10 +684,11 @@ function install_napcat_dlc() {
     else
         log "移动文件成功"
     fi
-
+    rm -rf ./napcattmp/napcat.packet.linux
     sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
     sudo jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
     sudo mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
+    clean
 }
 
 # 函数: 安装NapCatQQ CLI
@@ -700,19 +701,19 @@ function install_napcat_cli() {
     network_test "Github"
     default_file="napcat"
     log "NapCatQQ CLI 下载链接: $napcat_cli_download_url"
-    sudo curl -L "$napcat_cli_download_url" -o "${default_file}"
+    sudo curl -L "$napcat_cli_download_url" -o "./napcattmp/${default_file}"
 
     if [ $? -ne 0 ]; then
         log "文件下载失败, 请检查错误。"
         exit 1
     fi
 
-    if [ -f "${default_file}" ]; then
+    if [ -f "./napcattmp/${default_file}" ]; then
         log "$default_file 成功下载。"
     else
         ext_file=$(basename "$napcat_cli_download_url")
         if [ -f "$ext_file" ]; then
-            mv "$ext_file" "${default_file}"
+            mv "$ext_file" "./napcattmp/${default_file}"
             if [ $? -ne 0 ]; then
                 log "$default_file 成功下载。"
             else
@@ -728,7 +729,7 @@ function install_napcat_cli() {
     fi
 
     log "正在移动文件..."
-    sudo cp -f ./napcat /usr/local/bin/napcat
+    sudo cp -f ./napcattmp/napcat /usr/local/bin/napcat
     if [ $? -ne 0 -a $? -ne 1 ]; then
         log "文件移动失败, 请以root身份运行。"
         clean
@@ -736,7 +737,9 @@ function install_napcat_cli() {
     else
         log "移动文件成功"
     fi
+    rm -rf ./napcattmp/napcat
     sudo chmod +x /usr/local/bin/napcat
+    clean
 }
 
 function show_info() {
