@@ -25,7 +25,7 @@ echo -e "${GREEN}正在初始化napcat容器...${NC}"
 init_cmd="apt update -y && \
 apt install -y sudo curl && \
 curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && \
-sudo bash napcat.sh --docker n --proot y && \
+sudo bash napcat.sh --docker n --dlc n --cli n && \
 apt autoremove -y && \
 apt clean && \
 rm -rf /tmp/* /var/lib/apt/lists"
