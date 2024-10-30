@@ -641,7 +641,6 @@ cat <<EOF > "$webui_config"
 EOF
     fi
     clean
-    show_info
 }
 
 # 函数: 安装NapCatQQ DLC
@@ -792,15 +791,16 @@ function enhance() {
             "1")
                 install_napcat_dlc
                 whiptail --title "Napcat Installer" --msgbox "    安装DLC完成" 8 24
+                show_info
                 ;;
             "2")
-                install_napcat_cli
                 whiptail --title "Napcat Installer" --msgbox "    安装CLI完成" 8 24
                 ;;
             "3")
                 break
                 ;;
             "4")
+                show_info
                 exit 0
                 ;;
             *)
@@ -845,7 +845,8 @@ function main() {
             "3")
                 enhance
                 ;;
-            *)
+            *)  
+                show_info
                 exit 0
                 ;;
         esac
