@@ -768,10 +768,11 @@ function install_napcat_cli() {
 }
 
 function show_main_info() {
+    ip=$(curl -4 ip.sb)
     web_token=$(sudo jq -r '.token' ${target_folder}/napcat/config/webui.json)
     log "\n安装完成。"
     log "WEB_UI访问密钥为 ${web_token} "
-    log "WEB_UI访问链接格式为 http://ip:6099/webui?token=${web_token} (若多开则端口按顺序+1)"
+    log "WEB_UI访问链接格式为 http://$ip:6099/webui?token=${web_token} (若多开则端口按顺序+1)"
     log ""
     log "输入 xvfb-run -a qq --no-sandbox 命令启动。"
     log "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" "
