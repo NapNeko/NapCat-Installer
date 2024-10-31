@@ -117,8 +117,8 @@ function create_tmp_folder() {
         log "文件夹已存在(./NapCat/及./napcattmp/), 请重命名后重新执行脚本防止误删"
         exit 1
     fi
-    mkdir -p ./NapCat/
-    mkdir -p ./napcattmp/
+    sudo mkdir -p ./NapCat/
+    sudo mkdir -p ./napcattmp/
 }
 
 # 函数: 清理临时文件
@@ -390,7 +390,16 @@ function check_linuxqq(){
                     install_linuxqq
                 else
                     log "版本已满足要求, 无需更新。"
-                    update_linuxqq_config "$version" "$installed_build"
+
+                    log "已安装最新版本, 无需更新。"
+                    reinstall=$(whiptail --title "Napcat Installer" --yesno "已安装最新版本, 是否重装。" 15 50 3>&1 1>&2 2>&3)
+                    if [ $? -eq 0 ]; then
+                        force="y"
+                        check_napcat
+                        force="n"
+                    else
+                        update_linuxqq_config "$version" "$installed_build"
+                    fi
                 fi
             else
                 install_linuxqq
@@ -542,16 +551,15 @@ function install_napcat() {
     
     # 网络测试    
     network_test "Github"
-
+    create_tmp_folder
     default_file="NapCat.Shell.zip"
     log "NapCatQQ下载链接: $napcat_download_url"
     sudo curl -L "$napcat_download_url" -o "$default_file"
     if [ $? -ne 0 ]; then
         log "文件下载失败, 请检查错误。"
+        clean
         exit 1
     fi
-
-    create_tmp_folder
 
     if [ -f "$default_file" ]; then
         log "$default_file 成功下载。"
@@ -614,9 +622,13 @@ function install_napcat() {
         log "修补文件成功"
     fi
 
+    clean
+
     if [ "$use_dlc" = "y" ]; then
         install_napcat_dlc
     elif [ "$use_cli" = "n" ]; then
+        log "跳过安装DLC。"
+    else
         log "跳过安装DLC。"
     fi
 
@@ -624,11 +636,13 @@ function install_napcat() {
         install_napcat_cli
     elif [ "$use_cli" = "n" ]; then
         log "跳过安装CLI。"
+    else
+        log "跳过安装CLI。"
     fi
 
     webui_config="${target_folder}/napcat/config/webui.json"
     if [ -f "$webui_config" ]; then
-        sudo touch "${target_folder}/napcat/config/webui.json"
+        log "webui配置文件已存在, 跳过"
     else
 cat <<EOF > "$webui_config"
 {
@@ -640,21 +654,20 @@ cat <<EOF > "$webui_config"
 }
 EOF
     fi
-    clean
 }
 
 # 函数: 安装NapCatQQ DLC
 function install_napcat_dlc() {
     log "安装NapCatQQ DLC..."
-    
+    create_tmp_folder
     # 网络测试    
     network_test "Github"
-    create_tmp_folder
     default_file="napcat.packet.linux"
     log "NapCatQQ DLC 下载链接: $napcat_dlc_download_url"
     sudo curl -L "$napcat_dlc_download_url" -o "./napcattmp/${default_file}"
     if [ $? -ne 0 ]; then
         log "文件下载失败, 请检查错误。"
+        clean
         exit 1
     fi
 
@@ -691,7 +704,7 @@ function install_napcat_dlc() {
     else
         log "移动文件成功"
     fi
-
+    clean
     sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
 
     if [[ -f "$target_folder/napcat/config/napcat.json" ]] ; then
@@ -701,7 +714,6 @@ function install_napcat_dlc() {
     else
         log "未发现napcat.json, 跳过添加packetServer"
     fi
-    clean
 }
 
 # 函数: 安装NapCatQQ CLI
@@ -709,15 +721,16 @@ function install_napcat_cli() {
     if [ -f "/etc/init.d/napcat" ]; then
         sudo rm -f /etc/init.d/napcat
     fi
-    create_tmp_folder
     log "安装NapCatQQ CLI..."   
     network_test "Github"
+    create_tmp_folder
     default_file="napcat"
     log "NapCatQQ CLI 下载链接: $napcat_cli_download_url"
     sudo curl -L "$napcat_cli_download_url" -o "./napcattmp/${default_file}"
 
     if [ $? -ne 0 ]; then
         log "文件下载失败, 请检查错误。"
+        clean
         exit 1
     fi
 
@@ -750,30 +763,33 @@ function install_napcat_cli() {
     else
         log "移动文件成功"
     fi
-
-    sudo chmod +x /usr/local/bin/napcat
     clean
+    sudo chmod +x /usr/local/bin/napcat
 }
 
 function show_info() {
     web_token=$(sudo jq -r '.token' ${target_folder}/napcat/config/webui.json)
-    log "\n安装完成, 请输入 napcat help  获取帮助。"
-    log "后台快速登录 请输入 napcat start QQ账号 "
-    log "Napcat安装位置 $target_folder/napcat "
-    log "Napcat_DLC安装位置 $target_folder/napcat.packet "
+    log "安装完成。"
     log "WEB_UI访问密钥为 ${web_token} "
+    log "WEB_UI访问链接格式为 http://ip:6099/webui?token=${web_token} (若多开则端口按顺序+1)"
     log ""
     log "旧方法: "
     log "输入 xvfb-run -a qq --no-sandbox 命令启动。"
     log "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" "
     log "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" "
+    log "Napcat安装位置 $target_folder/napcat"
     log "注意, 您可以随时使用 screen -r napcat 来进入后台进程并使用 ctrl + a + d 离开(离开不会关闭后台进程)。"
     log "停止后台运行 请输入 screen -S napcat -X quit"
     log ""
     log "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
     log "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
     log "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
+    log "Napcat_DLC安装位置 $target_folder/napcat.packet"
     log "停止后台运行 请输入 screen -S napcatdlc -X quit"
+    log ""
+    log "新方法(未安装cli请忽略): "
+    log "输入 napcat help  获取帮助。"
+    log "后台快速登录 请输入 napcat start QQ账号 "
 }
 
 function enhance() {
@@ -801,6 +817,7 @@ function enhance() {
                 ;;
             "4")
                 show_info
+                clean
                 exit 0
                 ;;
             *)
@@ -847,6 +864,7 @@ function main() {
                 ;;
             *)  
                 show_info
+                clean
                 exit 0
                 ;;
         esac
@@ -906,9 +924,11 @@ done
 
 if [ "$use_docker" = "y" ]; then
     docker_install
+    clean
     exit 0
 elif [ "$use_docker" = "n" ]; then
     check_napcat
+    clean
     exit 0
 fi
 
