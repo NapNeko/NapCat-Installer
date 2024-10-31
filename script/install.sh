@@ -767,27 +767,30 @@ function install_napcat_cli() {
     sudo chmod +x /usr/local/bin/napcat
 }
 
-function show_info() {
+function show_mian_info() {
     web_token=$(sudo jq -r '.token' ${target_folder}/napcat/config/webui.json)
-    log "安装完成。"
+    log "\n安装完成。"
     log "WEB_UI访问密钥为 ${web_token} "
     log "WEB_UI访问链接格式为 http://ip:6099/webui?token=${web_token} (若多开则端口按顺序+1)"
     log ""
-    log "旧方法: "
     log "输入 xvfb-run -a qq --no-sandbox 命令启动。"
     log "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" "
     log "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" "
     log "Napcat安装位置 $target_folder/napcat"
     log "注意, 您可以随时使用 screen -r napcat 来进入后台进程并使用 ctrl + a + d 离开(离开不会关闭后台进程)。"
     log "停止后台运行 请输入 screen -S napcat -X quit"
-    log ""
-    log "注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
+}
+
+function show_dlc_info() {
+    log "\n注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
     log "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
     log "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
     log "Napcat_DLC安装位置 $target_folder/napcat.packet"
     log "停止后台运行 请输入 screen -S napcatdlc -X quit"
-    log ""
-    log "新方法(未安装cli请忽略): "
+}
+
+function show_cli_info() {
+    log "\n新方法(未安装cli请忽略): "
     log "输入 napcat help  获取帮助。"
     log "后台快速登录 请输入 napcat start QQ账号 "
 }
@@ -807,16 +810,17 @@ function enhance() {
             "1")
                 install_napcat_dlc
                 whiptail --title "Napcat Installer" --msgbox "    安装DLC完成" 8 24
+                show_dlc_info
                 ;;
             "2")
                 install_napcat_cli
                 whiptail --title "Napcat Installer" --msgbox "    安装CLI完成" 8 24
+                show_cli_info
                 ;;
             "3")
                 break
                 ;;
             "4")
-                show_info
                 clean
                 exit 0
                 ;;
@@ -827,23 +831,57 @@ function enhance() {
     done
 }
 
+function shell_help() {
+    help_content="欢迎使用 Napcat Installer 帮助
+
+    命令选项(高级用法)
+    请使用方向键(鼠标滚轮)上下滚动查看更多内容, 左右键选择ok。
+    您可以在 原安装命令 后面添加以下参数
+
+    1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
+
+    2. --qq \"123456789\": 传入docker安装时的QQ号
+
+    3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
+
+    4. --confirm: 传入docker安装时的是否确认执行安装
+
+    5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
+
+    6. --dlc [y/n]: shell安装时是否安装dlc
+
+    7. --cli [y/n]: shell安装时是否安装cli
+
+    8. --force: 传入则执行shell强制重装
+
+    使用示例: 
+    1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
+        原安装命令 --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+    2.  运行shell安装并传入 安装dlc 不安装cli 不使用代理 强制重装:
+        原安装命令 --docker n --dlc y --cli n --proxy 0 --force"
+    
+    whiptail --title "Napcat Installer" --scrolltext --msgbox "$help_content" 20 70 0
+}
+
 # 主函数
 function main() {
     OS=$(grep ^PRETTY_NAME= /etc/os-release | cut -d= -f2 | tr -d '"')
     while true; do
         choice=$(
             whiptail --title "Napcat Installer" \
-            --menu "\n当前系统为: ${OS}\n请使用方向键+回车键使用" 14 50 4 \
+            --menu "\n当前系统为: ${OS}\n请使用方向键(鼠标滚轮)+回车键使用" 15 50 5 \
             "1" "🐚 shell安装" \
             "2" "🐋 docker安装" \
             "3" "🎁 拓展安装" \
-            "4" "🚪 退出" 3>&1 1>&2 2>&3
+            "4" "🍩 shell帮助" \
+            "5" "🚪 退出" 3>&1 1>&2 2>&3
             )
 
         case $choice in
             "1")
                 check_napcat
                 whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
+                show_mian_info
                 enhance
 
                 # read -p "是否返回主菜单？(Y/n): " response
@@ -862,8 +900,10 @@ function main() {
             "3")
                 enhance
                 ;;
+            "4")
+                shell_help
+                ;;
             *)  
-                show_info
                 clean
                 exit 0
                 ;;
