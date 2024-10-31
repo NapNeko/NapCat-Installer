@@ -268,7 +268,7 @@ function docker_install() {
     log "当前系统架构: $system_arch"
     if ! command -v docker &> /dev/null; then
         execute_command "sudo apt-get update -y" "更新软件包列表"
-        execute_command "sudo apt-get install -y curl" "安装curl"
+        execute_command "sudo apt-get install -y -qq curl" "安装curl"
         execute_command "sudo curl -fsSL https://nclatest.znin.net/docker_install_script -o get-docker.sh" "下载docker安装脚本"
         sudo chmod +x get-docker.sh
         execute_command "sudo sh get-docker.sh" "安装docker"
@@ -329,7 +329,7 @@ function install_dependency() {
     # 开始安装基础依赖
     if [ "$package_manager" = "apt-get" ]; then
         execute_command "sudo apt-get update -y" "更新软件包列表"
-        execute_command "sudo apt-get install -y zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
+        execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "$package_manager" = "yum" ]; then
         # 安装epel, 因为某些包在自带源里缺失
         execute_command "sudo yum install -y epel-release" "安装epel"
