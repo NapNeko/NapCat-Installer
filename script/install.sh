@@ -767,7 +767,7 @@ function install_napcat_cli() {
     sudo chmod +x /usr/local/bin/napcat
 }
 
-function show_mian_info() {
+function show_main_info() {
     web_token=$(sudo jq -r '.token' ${target_folder}/napcat/config/webui.json)
     log "\n安装完成。"
     log "WEB_UI访问密钥为 ${web_token} "
@@ -881,7 +881,7 @@ function main() {
             "1")
                 check_napcat
                 whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-                show_mian_info
+                show_main_info
                 enhance
 
                 # read -p "是否返回主菜单？(Y/n): " response
