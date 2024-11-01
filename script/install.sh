@@ -515,15 +515,24 @@ function check_napcat() {
     install_dependency
     check_linuxqq
     modify_qq_config
-    # napcat_version=$(curl "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
-    napcat_version=$(curl -s "https://nclatest.znin.net/" | jq -r '.tag_name')
-    if [ -z $napcat_version ]; then
-        log "无法获取NapCatQQ版本, 请检查错误。"
-        exit 1
+    napcat_version=$(curl -s "https://nclatest.znin.net" | jq -r '.tag_name')
+    if [ -n "$napcat_version" ]; then
+        if [[ "$napcat_version" == v* ]]; then
+            log "最新NapCatQQ版本: $napcat_version"
+        else
+            log "获取NapCatQQ版本失败, 尝试使用GitHub官方api获取。"
+            napcat_version=$(curl -s "https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest" | jq -r '.tag_name')
+            if [ -n "$napcat_version" ]; then
+                if [[ "$napcat_version" == v* ]]; then
+                    log "最新NapCatQQ版本: $napcat_version"
+                else
+                    log "无法获取NapCatQQ版本, 请检查错误。"
+                    exit 1
+                fi
+            fi
+        fi
     fi
 
-    log "最新NapCatQQ版本: $napcat_version"
-    
     if [ "$force" = "y" ]; then
         log "强制重装模式..."
         install_napcat
