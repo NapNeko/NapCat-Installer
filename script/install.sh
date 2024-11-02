@@ -333,7 +333,7 @@ function install_dependency() {
     elif [ "$package_manager" = "yum" ]; then
         # 安装epel, 因为某些包在自带源里缺失
         execute_command "sudo yum install -y epel-release" "安装epel"
-        execute_command "sudo yum install -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        execute_command "sudo yum install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     else
         log "包管理器检查失败, 目前仅支持apt-get/yum。"
         exit 1
