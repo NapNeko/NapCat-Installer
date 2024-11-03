@@ -231,12 +231,12 @@ startdown() {
 
 update() {
     stop
-    sudo bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
+    sudo bash < <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
 }
 
 rebuild() {
     stop
-    sudo bash <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
+    sudo bash < <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
 }
 
 remove() {
