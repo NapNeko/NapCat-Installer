@@ -630,15 +630,14 @@ function install_napcat() {
     clean
 
     if [ "$use_tui" = "y" ]; then
-        install_tui=$(whiptail --title "Napcat Installer" --yesno "是否安装cli" 15 50 3>&1 1>&2 2>&3)
+        install_cli=$(whiptail --title "Napcat Installer" --yesno "是否安装cli" 15 50 3>&1 1>&2 2>&3)
         if [ $? -eq 0 ]; then
             use_cli="y"
         else
             use_cli="n"
         fi
-    elif [ "$use_tui" = "n" ]; then
-        use_cli="n"
-    else
+    fi
+    if [ -z "$use_cli" ]; then
         log "是否安装cli(y/n)"
         read -r use_cli
         if [[ "$use_cli" =~ ^[Yy]?$ ]]; then
@@ -837,6 +836,7 @@ while [[ $# -ge 1 ]]; do
         --confirm)
             shift
             confirm="y"
+            shift
             ;;
         --force)
             shift
