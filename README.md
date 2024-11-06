@@ -50,7 +50,7 @@ curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script
 ```bash
 curl -o napcat.termux.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.termux.sh && bash napcat.termux.sh
 ```
-或者使用tmoe脚本来安装proot(无root)/chroot(有root)容器并执行上面的[Linux安装命令](###Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9))而非本命令
+或者使用tmoe脚本来安装proot(无root)/chroot(有root)容器并执行上面的[Linux安装命令](#`Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9)`)而非本命令
 
 ### Windows11
 在需要的文件夹右键选择 `在终端中打开` 
