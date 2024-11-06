@@ -26,7 +26,7 @@ curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script
     7. --force: 传入则执行shell强制重装
 
     使用示例: 
-    0.  使用tui使用tui可视化交互安装:
+    0.  使用tui可视化交互安装:
         curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
     1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
         curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
