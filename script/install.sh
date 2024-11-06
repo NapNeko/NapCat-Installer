@@ -819,7 +819,7 @@ while [[ $# -ge 1 ]]; do
             shift
             use_tui="n"
             shift
-        ;;
+            ;;
         --docker)
             shift
             use_docker="$1"
