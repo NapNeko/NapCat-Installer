@@ -18,7 +18,20 @@ execute_command() {
     fi
 }
 
-execute_command "apt update -y && apt install -y proot-distro screen" "准备proot-distro环境"
+echo -e "准备proot-distro环境中..."
+apt update -y && apt install -y proot-distro screen
+if [ $? -eq 0 ]; then
+    echo -e "${GREEN}准备proot-distro环境成功${NC}"
+else
+    pkg update -y && pkg install -y proot-distro screen
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}准备proot-distro环境成功${NC}"
+    else
+        echo -e "${RED}准备proot-distro环境失败${NC}"
+        exit 1
+    fi
+fi
+
 execute_command "proot-distro install debian --override-alias napcat" "安装napcat容器"
 
 echo -e "${GREEN}正在初始化napcat容器...${NC}"
