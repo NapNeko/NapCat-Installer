@@ -4,41 +4,53 @@ NapCat 启动!
 ## 使用
 ### Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9)
 在需要的文件夹 执行此代码 稍等片刻即可运行
-```bat
+```bash
 curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh
 ```
-    命令选项(高级用法)
+<details>
+  <summary>命令选项(高级用法)</summary>
 
-    0. --tui: 使用tui可视化交互安装
+  0. --tui: 使用tui可视化交互安装
 
-    1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
+  1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
 
-    2. --qq \"123456789\": 传入docker安装时的QQ号
+  2. --qq \"123456789\": 传入docker安装时的QQ号
 
-    3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
+  3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
 
-    4. --confirm: 传入docker安装时的是否确认执行安装
+  4. --confirm: 传入docker安装时的是否确认执行安装
 
-    5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
+  5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
 
-    6. --cli [y/n]: shell安装时是否安装cli
+  6. --cli [y/n]: shell安装时是否安装cli
 
-    7. --force: 传入则执行shell强制重装
+  7. --force: 传入则执行shell强制重装
 
-    使用示例: 
-    0.  使用tui可视化交互安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
-    1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
-    2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force
+  **使用示例:**
+  1. 使用tui可视化交互安装:
+      ```bash
+      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
+      ```
+
+  2. 运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
+      ```bash
+      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+      ```
+
+  3. 运行shell安装并传入 不安装cli 不使用代理 强制重装:
+      ```bash
+      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force
+      ```
+
+</details>
+
 
 ### Termux(存储空间占用~1.5GB)
 执行此代码 稍等片刻即可运行
-```bat
+```bash
 curl -o napcat.termux.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.termux.sh && bash napcat.termux.sh
 ```
-或者使用tmoe脚本来安装proot(无root)/chroot(有root)容器并执行上面的[Linux安装命令](#linux支持ubuntu-20-debian-10-centos系仅支持9)而非本命令
+或者使用tmoe脚本来安装proot(无root)/chroot(有root)容器并执行上面的[Linux安装命令](#Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9))而非本命令
 
 ### Windows11
 在需要的文件夹右键选择 `在终端中打开` 
