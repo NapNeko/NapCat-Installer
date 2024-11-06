@@ -7,26 +7,31 @@ NapCat 启动!
 ```bat
 curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh
 ```
-需已安装whiptail，否则脚本会自动退出，可以用apt/yum安装
+    命令选项(高级用法)
 
-或者在原安装命令后面添加以下参数
+    0. --tui: 使用tui可视化交互安装
 
-1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
+    1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
 
-2. --qq \"123456789\": 传入docker安装时的QQ号
+    2. --qq \"123456789\": 传入docker安装时的QQ号
 
-3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
+    3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
 
-4. --confirm: 传入docker安装时的是否确认执行安装
+    4. --confirm: 传入docker安装时的是否确认执行安装
 
-5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
+    5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
 
-6. --dlc [y/n]: shell安装时是否安装dlc
+    6. --cli [y/n]: shell安装时是否安装cli
 
-7. --cli [y/n]: shell安装时是否安装cli
+    7. --force: 传入则执行shell强制重装
 
-8. --force: 传入则执行shell强制重装
-
+    使用示例: 
+    0.  使用tui使用tui可视化交互安装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
+    1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+    2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force
 
 ### Termux(存储空间占用~1.5GB)
 执行此代码 稍等片刻即可运行
