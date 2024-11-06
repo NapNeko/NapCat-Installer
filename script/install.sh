@@ -860,7 +860,7 @@ done
 
 if [ "$use_tui" = "y" ]; then
     main_tui
-else 
+elif [ -z $use_docker ]; then
     log "是否使用shell安装(y/n)"
     read -r use_docker
     if [[ "$use_docker" =~ ^[Yy]?$ ]]; then
