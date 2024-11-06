@@ -18,7 +18,7 @@ execute_command() {
     fi
 }
 
-execute_command "pkg update -y && pkg install -y proot-distro screen" "准备proot-distro环境"
+execute_command "apt update -y && apt install -y proot-distro screen" "准备proot-distro环境"
 execute_command "proot-distro install debian --override-alias napcat" "安装napcat容器"
 
 echo -e "${GREEN}正在初始化napcat容器...${NC}"
