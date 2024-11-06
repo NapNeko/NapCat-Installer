@@ -636,6 +636,8 @@ function install_napcat() {
         else
             use_cli="n"
         fi
+    elif [ "$use_tui" = "n" ]; then
+        use_cli="n"
     else
         log "是否安装cli(y/n)"
         read -r use_cli
