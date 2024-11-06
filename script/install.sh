@@ -749,7 +749,7 @@ function shell_help() {
     help_content="命令选项(高级用法)
     您可以在 原安装命令 后面添加以下参数
 
-    0. --tui: 使用tui可视化交互安装
+    0. --notui: 关闭tui可视化交互安装
 
     1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
 
@@ -766,11 +766,13 @@ function shell_help() {
     7. --force: 传入则执行shell强制重装
 
     使用示例: 
-    0.  使用tui使用tui可视化交互安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
-    1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
+    0.  默认安装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh
+    1.  关闭tui可视化交互安装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --notui
+    2.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
         curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
-    2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
+    3.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
         curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force"
     echo "$help_content"
 }
@@ -813,11 +815,11 @@ root_check
 
 while [[ $# -ge 1 ]]; do
     case $1 in
-        --tui)
+        --notui)
             shift
-            use_tui="y"
+            use_tui="n"
             shift
-            ;;
+        ;;
         --docker)
             shift
             use_docker="$1"
@@ -859,11 +861,11 @@ while [[ $# -ge 1 ]]; do
             ;;
     esac
 done
-
-if [ "$use_tui" = "y" ]; then
+if command -v whiptail >/dev/null && [ "$use_tui" != "n" ]; then
+    use_tui="y"
     main_tui
 elif [ -z $use_docker ]; then
-    log "是否使用shell安装(y/n)"
+    log "是否使用shell安装，否则使用docker(y/n)"
     read -r use_docker
     if [[ "$use_docker" =~ ^[Yy]?$ ]]; then
         use_docker="n"
