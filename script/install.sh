@@ -23,31 +23,25 @@ echo -e " ${MAGENTA}│${RED}╚═${YELLOW}╝ ${GREEN} ╚${CYAN}══${BLUE}
 echo -e " ${RED}└${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}${YELLOW}─┘${NC}"
 echo -e "                      ${BLUE}Powered by NapCat-Installer${NC}\n"
 
-# 获取当前目录
-CURRENT_DIR=$(
-    cd "$(dirname "$0")" || exit
-    pwd
-)
-
+# QQ安装目录
 target_folder="/opt/QQ/resources/app/app_launcher"
 
 # 日志
 function log() {
     time=$(date +"%Y-%m-%d %H:%M:%S")
     message="[${time}]: $1 "
-
     case "$1" in
         *"失败"*|*"错误"*|*"sudo不存在"*|*"当前用户不是root用户"*|*"无法连接"*)
-            echo -e "${RED}${message}${NC}" 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+            echo -e "${RED}${message}${NC}"
             ;;
         *"成功"*)
-            echo -e "${GREEN}${message}${NC}" 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+            echo -e "${GREEN}${message}${NC}"
             ;;
         *"忽略"*|*"跳过"*)
-            echo -e "${YELLOW}${message}${NC}" 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+            echo -e "${YELLOW}${message}${NC}"
             ;;
         *)
-            echo -e "${BLUE}${message}${NC}" 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+            echo -e "${BLUE}${message}${NC}"
             ;;
     esac
 }
@@ -55,9 +49,7 @@ function log() {
 # 执行命令
 function execute_command() {
     log "${2}中..."
-    # $1 > /dev/null 2>&1 &
-    # wait $!
-    $1 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+    $1
     if [ $? -eq 0 ]; then
         log "$2 ($1)成功"
     else
@@ -69,7 +61,7 @@ function execute_command() {
 # 检查sudo
 function sudo_check() {
     if ! command -v sudo &> /dev/null; then
-        log "sudo不存在, 请手动安装: \n Centos: yum install -y sudo\n Debian/Ubuntu: apt-get install -y sudo\n"
+        log "sudo不存在, 请手动安装: \n Centos: dnf install -y sudo\n Debian/Ubuntu: apt-get install -y sudo\n"
         exit 1
     fi
 }
@@ -98,8 +90,8 @@ function get_system_arch() {
 function detect_package_manager() {
     if command -v apt-get &> /dev/null; then
         package_manager="apt-get"
-    elif command -v yum &> /dev/null; then
-        package_manager="yum"
+    elif command -v dnf &> /dev/null; then
+        package_manager="dnf"
     fi
 }
 
@@ -131,6 +123,12 @@ function clean() {
     sudo rm -rf ./NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         log "NapCatQQ压缩包删除失败, 请手动删除 $default_file。"
+    fi
+    if [ -f "/etc/init.d/napcat" ]; then
+        sudo rm -f /etc/init.d/napcat
+    fi
+    if [ -d "$target_folder/napcat.packet" ]; then
+        sudo rm -rf  "$target_folder/napcat.packet"
     fi
 }
 
@@ -179,13 +177,6 @@ function network_test() {
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Shell.zip"
-
-    if [ "$system_arch" = "amd64" ]; then
-        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.linux"
-    elif [ "$system_arch" = "arm64" ]; then
-        napcat_dlc_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/napcat.packet.arm64"
-    fi
-
     napcat_cli_download_url="${target_proxy:+${target_proxy}/}https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/napcat"
 }
 
@@ -212,8 +203,6 @@ function generate_docker_command() {
     fi
 }
 
-#!/bin/sh
-
 # 获取 QQ 号
 function get_qq() {
     while true; do
@@ -230,7 +219,6 @@ function get_qq() {
             break
         fi
     done
-    
 }
 
 # 获取选择模式
@@ -330,12 +318,12 @@ function install_dependency() {
     if [ "$package_manager" = "apt-get" ]; then
         execute_command "sudo apt-get update -y" "更新软件包列表"
         execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
-    elif [ "$package_manager" = "yum" ]; then
+    elif [ "$package_manager" = "dnf" ]; then
         # 安装epel, 因为某些包在自带源里缺失
-        execute_command "sudo yum install -y epel-release" "安装epel"
-        execute_command "sudo yum install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        execute_command "sudo dnf install -y epel-release" "安装epel"
+        execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     else
-        log "包管理器检查失败, 目前仅支持apt-get/yum。"
+        log "包管理器检查失败, 目前仅支持apt-get/dnf。"
         exit 1
     fi
 }
@@ -390,15 +378,23 @@ function check_linuxqq(){
                     install_linuxqq
                 else
                     log "版本已满足要求, 无需更新。"
-
-                    log "已安装最新版本, 无需更新。"
-                    reinstall=$(whiptail --title "Napcat Installer" --yesno "已安装最新版本, 是否重装。" 15 50 3>&1 1>&2 2>&3)
-                    if [ $? -eq 0 ]; then
-                        force="y"
-                        check_napcat
-                        force="n"
+                    if [ "$use_tui" = "y" ]; then
+                        reinstall=$(whiptail --title "Napcat Installer" --yesno "已安装最新版本, 是否重装。" 15 50 3>&1 1>&2 2>&3)
+                        if [ $? -eq 0 ]; then
+                            force="y"
+                        else
+                            force="n"
+                            update_linuxqq_config "$version" "$installed_build"
+                        fi
                     else
-                        update_linuxqq_config "$version" "$installed_build"
+                        log "是否重装(y/n)"
+                        read -r force
+                        if [[ "$force" =~ ^[Yy]?$ ]]; then
+                            force="y"
+                        else
+                            force="n"
+                            update_linuxqq_config "$version" "$installed_build"
+                        fi
                     fi
                 fi
             else
@@ -435,7 +431,7 @@ function install_linuxqq() {
 
     # TODO: 优化QQ包依赖
     # 鉴于QQ似乎仍在变动linux包的依赖, 所以目前暂时安装所有QQ认为其自身所需的依赖以尽力保证脚本正常工作
-    if [ "$package_manager" = "yum" ]; then
+    if [ "$package_manager" = "dnf" ]; then
         sudo curl -L "$qq_download_url" -o QQ.rpm
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。"
@@ -443,7 +439,7 @@ function install_linuxqq() {
         else
             log "文件下载成功"
         fi
-        execute_command "sudo yum localinstall -y ./QQ.rpm" "安装QQ"
+        execute_command "sudo dnf localinstall -y ./QQ.rpm" "安装QQ"
         rm -f QQ.rpm
     elif [ "$package_manager" = "apt-get" ]; then
         sudo curl -L "$qq_download_url" -o QQ.deb
@@ -459,13 +455,13 @@ function install_linuxqq() {
         execute_command "sudo apt-get install -y libgbm1" "安装libgbm1"
         # Ubuntu24.04开始libasound2已不存在
         log "安装libasound2中..."
-        sudo apt-get install -y libasound2 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+        sudo apt-get install -y libasound2
         if [ $? -eq 0 ]; then
             log "安装libasound2 成功"
         else
             log "安装libasound2 失败"
             log "尝试安装libasound2t64中..."
-            sudo apt-get install -y libasound2t64 2>&1 | tee -a "${CURRENT_DIR}"/install.log
+            sudo apt-get install -y libasound2t64
             wait $!
             if [ $? -eq 0 ]; then
                 log "安装libasound2 成功"
@@ -633,12 +629,23 @@ function install_napcat() {
 
     clean
 
-    if [ "$use_dlc" = "y" ]; then
-        install_napcat_dlc
-    elif [ "$use_cli" = "n" ]; then
-        log "跳过安装DLC。"
+    if [ "$use_tui" = "y" ]; then
+        install_tui=$(whiptail --title "Napcat Installer" --yesno "是否安装cli" 15 50 3>&1 1>&2 2>&3)
+        if [ $? -eq 0 ]; then
+            use_cli="y"
+        else
+            use_cli="n"
+        fi
     else
-        log "跳过安装DLC。"
+        log "是否安装cli(y/n)"
+        read -r use_cli
+        if [[ "$use_cli" =~ ^[Yy]?$ ]]; then
+            use_cli="y"
+        elif [[ "$use_cli" == "n" ]]; then
+            use_cli="n"
+        else
+            use_cli="n"
+        fi
     fi
 
     if [ "$use_cli" = "y" ]; then
@@ -665,71 +672,8 @@ EOF
     fi
 }
 
-# 函数: 安装NapCatQQ DLC
-function install_napcat_dlc() {
-    log "安装NapCatQQ DLC..."
-    create_tmp_folder
-    # 网络测试    
-    network_test "Github"
-    default_file="napcat.packet.linux"
-    log "NapCatQQ DLC 下载链接: $napcat_dlc_download_url"
-    sudo curl -L "$napcat_dlc_download_url" -o "./napcattmp/${default_file}"
-    if [ $? -ne 0 ]; then
-        log "文件下载失败, 请检查错误。"
-        clean
-        exit 1
-    fi
-
-    if [ -f "./napcattmp/${default_file}" ]; then
-        log "$default_file 成功下载。"
-    else
-        ext_file=$(basename "$napcat_dlc_download_url")
-        if [ -f "$ext_file" ]; then
-            mv "$ext_file" "./napcattmp/${default_file}"
-            if [ $? -ne 0 ]; then
-                log "$default_file 成功下载。"
-            else
-                log "文件更名失败, 请检查错误。"
-                clean
-                exit 1
-            fi
-        else
-            log "文件下载失败, 请检查错误。"
-            clean
-            exit 1
-        fi
-    fi
-
-    if [ ! -d "$target_folder/napcat.packet" ]; then
-        sudo mkdir -p "$target_folder/napcat.packet"
-    fi
-
-    log "正在移动文件..."
-    sudo cp -f ./napcattmp/napcat.packet.linux "$target_folder/napcat.packet/"
-    if [ $? -ne 0 -a $? -ne 1 ]; then
-        log "文件移动失败, 请以root身份运行。"
-        clean
-        exit 1
-    else
-        log "移动文件成功"
-    fi
-    clean
-    sudo chmod +x "$target_folder/napcat.packet/napcat.packet.linux"
-
-    if [[ -f "$target_folder/napcat/config/napcat.json" ]] ; then
-        log "添加packetServer"
-        sudo jq '.packetServer = "127.0.0.1:8086"' $target_folder/napcat/config/napcat.json > $target_folder/napcat/config/napcat._json
-        sudo mv $target_folder/napcat/config/napcat._json $target_folder/napcat/config/napcat.json
-    else
-        log "未发现napcat.json, 跳过添加packetServer"
-    fi
-}
-
 # 函数: 安装NapCatQQ CLI
 function install_napcat_cli() {
-    if [ -f "/etc/init.d/napcat" ]; then
-        sudo rm -f /etc/init.d/napcat
-    fi
     log "安装NapCatQQ CLI..."   
     network_test "Github"
     create_tmp_folder
@@ -789,14 +733,9 @@ function show_main_info() {
     log "Napcat安装位置 $target_folder/napcat"
     log "注意, 您可以随时使用 screen -r napcat 来进入后台进程并使用 ctrl + a + d 离开(离开不会关闭后台进程)。"
     log "停止后台运行 请输入 screen -S napcat -X quit"
-}
-
-function show_dlc_info() {
-    log "\n注意, 您需要手动执行以下命令 cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json"
-    log "输入 env -C $target_folder/napcat.packet ./napcat.packet.linux 命令启动DLC。"
-    log "保持后台运行 请输入 screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\""
-    log "Napcat_DLC安装位置 $target_folder/napcat.packet"
-    log "停止后台运行 请输入 screen -S napcatdlc -X quit"
+    if [ "$use_cli" = "y" ]; then
+        show_cli_info
+    fi
 }
 
 function show_cli_info() {
@@ -805,48 +744,11 @@ function show_cli_info() {
     log "后台快速登录 请输入 napcat start QQ账号 "
 }
 
-function enhance() {
-    while true; do
-        choice=$(
-            whiptail --title "Napcat Installer" \
-            --menu "\n是否安装拓展\n注: proot容器无法使用DLC" 14 50 4 \
-            "1" "📦 DLC" \
-            "2" "🕹️ CLI" \
-            "3" "🔙 返回" \
-            "4" "🚪 退出" 3>&1 1>&2 2>&3
-            )
-
-        case $choice in
-            "1")
-                install_napcat_dlc
-                whiptail --title "Napcat Installer" --msgbox "    安装DLC完成" 8 24
-                show_dlc_info
-                ;;
-            "2")
-                install_napcat_cli
-                whiptail --title "Napcat Installer" --msgbox "    安装CLI完成" 8 24
-                show_cli_info
-                ;;
-            "3")
-                break
-                ;;
-            "4")
-                clean
-                exit 0
-                ;;
-            *)
-                break
-                ;;
-        esac
-    done
-}
-
 function shell_help() {
-    help_content="欢迎使用 Napcat Installer 帮助
-
-    命令选项(高级用法)
-    请使用方向键(鼠标滚轮)上下滚动查看更多内容, 左右键选择ok。
+    help_content="命令选项(高级用法)
     您可以在 原安装命令 后面添加以下参数
+
+    0. --tui: 使用tui可视化交互安装
 
     1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
 
@@ -858,33 +760,30 @@ function shell_help() {
 
     5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
 
-    6. --dlc [y/n]: shell安装时是否安装dlc
+    6. --cli [y/n]: shell安装时是否安装cli
 
-    7. --cli [y/n]: shell安装时是否安装cli
-
-    8. --force: 传入则执行shell强制重装
+    7. --force: 传入则执行shell强制重装
 
     使用示例: 
+    0.  使用tui使用tui可视化交互安装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
     1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
-        原安装命令 --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
-    2.  运行shell安装并传入 安装dlc 不安装cli 不使用代理 强制重装:
-        原安装命令 --docker n --dlc y --cli n --proxy 0 --force"
-    
-    whiptail --title "Napcat Installer" --scrolltext --msgbox "$help_content" 20 70 0
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+    2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
+        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force"
+    echo "$help_content"
 }
 
-# 主函数
-function main() {
+# tui函数
+function main_tui() {
     OS=$(grep ^PRETTY_NAME= /etc/os-release | cut -d= -f2 | tr -d '"')
     while true; do
         choice=$(
             whiptail --title "Napcat Installer" \
-            --menu "\n当前系统为: ${OS}\n请使用方向键(鼠标滚轮)+回车键使用" 15 50 5 \
+            --menu "\n当前系统为: ${OS}\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
             "1" "🐚 shell安装" \
             "2" "🐋 docker安装" \
-            "3" "🎁 拓展安装" \
-            "4" "🍩 shell帮助" \
-            "5" "🚪 退出" 3>&1 1>&2 2>&3
+            "3" "🚪 退出" 3>&1 1>&2 2>&3
             )
 
         case $choice in
@@ -892,26 +791,14 @@ function main() {
                 check_napcat
                 whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
                 show_main_info
-                enhance
-
-                # read -p "是否返回主菜单？(Y/n): " response
-                # if [[ ! "$response" =~ ^[Yy]?$ ]]; then
-                #     break
-                # fi
                 ;;
             "2")
                 get_qq
                 whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-                # read -p "是否返回主菜单？(Y/n): " response
-                # if [[ ! "$response" =~ ^[Yy]?$ ]]; then
-                #     break
-                # fi
                 ;;
             "3")
-                enhance
-                ;;
-            "4")
-                shell_help
+                clean
+                exit 0
                 ;;
             *)  
                 clean
@@ -925,6 +812,11 @@ root_check
 
 while [[ $# -ge 1 ]]; do
     case $1 in
+        --tui)
+            shift
+            use_tui="y"
+            shift
+            ;;
         --docker)
             shift
             use_docker="$1"
@@ -954,23 +846,32 @@ while [[ $# -ge 1 ]]; do
             proxy_num="$1"
             shift
             ;;
-        --dlc)
-            shift
-            use_dlc="$1"
-            shift
-            ;;
         --cli)
             shift
             use_cli="$1"
             shift
             ;;
         *)
-            echo -n "Docker安装命令: bash $0 --docker [y|n] --qq \"114514\" --mode [ws|reverse_ws|reverse_http] --confirm --proxy [0|1|2|3|4|5|6]\n"
-            echo -n "直接安装命令: bash $0 --docker n --proxy [0|1|2|3|4] --force\n"
+            shell_help
             exit 1;
             ;;
     esac
 done
+
+if [ "$use_tui" = "y" ]; then
+    main_tui
+else 
+    log "是否使用shell安装(y/n)"
+    read -r use_docker
+    if [[ "$use_docker" =~ ^[Yy]?$ ]]; then
+        use_docker="n"
+    elif [[ "$use_docker" == "n" ]]; then
+        use_docker="y"
+    else
+        log "输入错误"
+        exit 1
+    fi
+fi
 
 if [ "$use_docker" = "y" ]; then
     docker_install
@@ -979,7 +880,8 @@ if [ "$use_docker" = "y" ]; then
 elif [ "$use_docker" = "n" ]; then
     check_napcat
     clean
+    show_main_info
     exit 0
 fi
 
-main
+

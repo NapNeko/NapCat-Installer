@@ -14,31 +14,12 @@ CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
 PID_FILE="/var/run/napcat_$QQ.pid"
 LOG_FILE="/var/log/napcat_$QQ.log"
 
-DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
-DLC_CMD="sudo ./napcat.packet.linux"
-DLC_PID_FILE="/var/run/dlcnapcat.pid"
-DLC_LOG_FILE="/var/log/dlcnapcat.log"
-
 start() {
     if [ -z "$QQ" ]; then
         echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 start 3116556127${NC}"
         exit 1
     fi
-    WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
-    if [ -f "$DLC_PID_FILE" ] && sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-        echo -e "${GREEN}DLC服务已运行 (PID: $(cat "$DLC_PID_FILE")), 跳过${NC}"
-    else
-        touch "$DLC_PID_FILE"
-        cd "$DLC_WORK_DIR" || { echo -e "${RED}切换到工作目录失败 $DLC_WORK_DIR DLC服务启动失败${NC}"; return 1; }
-        echo -e "${MAGENTA}启动 napcatdlc 服务中...${NC}"
-        exec $DLC_CMD >> "$DLC_LOG_FILE" 2>&1 &
-        echo $! > "$DLC_PID_FILE"
-        echo -e "${GREEN}DLC服务已启动 (PID: $(cat "$DLC_PID_FILE"))${NC}"
-        echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
-        sleep 3
-    fi
-
-    if [ -f "$PID_FILE" ] && sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+    if [ -f "$PID_FILE" ] && sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
         echo -e "${RED}服务已运行 (PID: $(cat "$PID_FILE"))${NC}"
     else
         touch "$PID_FILE"
@@ -52,44 +33,22 @@ start() {
 
 stop() {
     if [ -z "$QQ" ]; then
-        if [ ! -f "$DLC_PID_FILE" ] || ! sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-            echo -e "${GREEN}DLC服务未运行${NC}"
-            sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
-        else
-            echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
-            sudo pkill -9 -P $(cat "$DLC_PID_FILE") && sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
-            echo -e "${RED}DLC服务已停止${NC}"
-        fi
         pid_files=($(sudo find /var/run/ -name 'napcat_*.pid'))
         for pid_file in "${pid_files[@]}"; do
             echo -e "${MAGENTA}停止 napcat 服务 (PID: $(cat "$pid_file"))...${NC}"
-            sudo pkill -9 -P $(cat "$pid_file") && sudo rm -f "$pid_file"
+            QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
+            sudo pkill -f "qq --no-sandbox -q $QQ" && sudo rm -f "$pid_file"
         done
         echo -e "${RED}所有服务已停止${NC}"
         return 0
     fi
 
-    pid_files=($(sudo find /var/run/ -name 'napcat_*.pid'))
-
-    if [ ${#pid_files[@]} -le 1 ]; then
-        if [ ! -f "$DLC_PID_FILE" ] || ! sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-            echo -e "${GREEN}DLC服务未运行${NC}"
-            sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
-        else
-            echo -e "${MAGENTA}停止 napcatdlc 服务中...${NC}"
-            sudo pkill -9 -P $(cat "$DLC_PID_FILE") && sudo rm -f "$DLC_PID_FILE" && sudo rm -f "$DLC_LOG_FILE"
-            echo -e "${RED}DLC服务已停止${NC}"
-        fi
-    else
-        echo -e "${RED}有其它账号运行中, 暂不停止DLC服务${RED}"
-    fi
-
-    if [ ! -f "$PID_FILE" ] || ! sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+    if [ ! -f "$PID_FILE" ] || ! sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
         echo -e "${GREEN}服务未运行${NC}"
         sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
     else
         echo -e "${MAGENTA}停止 napcat 服务中 QQ: $QQ...${NC}"
-        sudo pkill -9 -P $(cat "$PID_FILE") && sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
+        sudo pkill -f "qq --no-sandbox -q $QQ" && sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
         echo -e "${RED}服务已停止${NC}"
     fi
 }
@@ -107,19 +66,12 @@ restart() {
 }
 
 status() {
-    if [ -f "$DLC_PID_FILE" ] && sudo pkill -0 -P $(cat "$DLC_PID_FILE") > /dev/null 2>&1; then
-        echo -e "${GREEN}DLC服务运行中 (PID: $(cat $DLC_PID_FILE))${NC}"
-    else
-        echo -e "${RED}DLC服务未运行${NC}"
-    fi
-    WEB_TOKEN=$(jq -r '.token' /opt/QQ/resources/app/app_launcher/napcat/config/webui.json)
-    echo -e "${GREEN}WEB_UI访问密钥为${RED} ${WEB_TOKEN} ${NC}"
     if [ -z "$QQ" ]; then
         echo -e "${YELLOW}当前正在运行的服务有:${NC}"
         for pid_file in /var/run/napcat_*.pid; do
             if [ -f "$pid_file" ]; then
                 QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
-                if sudo pkill -0 -P $(cat "$pid_file") > /dev/null 2>&1; then
+                if sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
                     echo -e "${GREEN}$QQ 运行中 (PID: $(cat "$pid_file"))${NC}"
                 else
                     echo -e "${RED}$QQ 未运行${NC}"
@@ -127,7 +79,7 @@ status() {
             fi
         done
     else
-        if [ -f "$PID_FILE" ] && sudo pkill -0 -P $(cat "$PID_FILE") > /dev/null 2>&1; then
+        if [ -f "$PID_FILE" ] && sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
             echo -e "${GREEN}服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))${NC}"
         else
             echo -e "${RED}服务未运行 QQ: $QQ${NC}"
@@ -177,19 +129,7 @@ CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q ${QQ}"
 PID_FILE="/var/run/napcat_${QQ}.pid"
 LOG_FILE="/var/log/napcat_${QQ}.log"
 
-DLC_WORK_DIR="/opt/QQ/resources/app/app_launcher/napcat.packet"
-DLC_CMD="sudo ./napcat.packet.linux"
-DLC_PID_FILE="/var/run/dlcnapcat.pid"
-DLC_LOG_FILE="/var/log/dlcnapcat.log"
-
 start() {
-    touch "\$DLC_PID_FILE"
-    cd "\$DLC_WORK_DIR" || { echo "dlc error"; return 1; }
-    exec \$DLC_CMD >> "\$DLC_LOG_FILE" 2>&1 &
-    echo \$! > "\$DLC_PID_FILE"
-    sleep 3
-    echo "dlc sucess"
-
     touch "\$PID_FILE"
     exec \$CMD >> "\$LOG_FILE" 2>&1 &
     echo \$! > "\$PID_FILE"
@@ -231,12 +171,12 @@ startdown() {
 
 update() {
     stop
-    sudo bash < <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n
+    curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh | sudo bash -s -- --docker n --cli y
 }
 
 rebuild() {
     stop
-    sudo bash < <(curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh) --docker n --force
+    curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh | sudo bash -s -- --docker n --cli y --force
 }
 
 remove() {
@@ -290,10 +230,6 @@ help() {
     echo -e " ${GREEN}   napcat remove                         ${MAGENTA}卸载 NAPCAT及QQ${NC}"
     echo -e " ${GREEN}   napcat help                           ${MAGENTA}查看此帮助${NC}"
     echo -e " ${GREEN}   napcat oldhelp                        ${MAGENTA}查看旧方法(若此脚本不生效)${NC}"
-    echo
-    # echo -e "若为termux${NC}则需先进入容器内部, 请输入${GREEN} proot-distro login napcat${NC}"
-    # echo -e "或者输入proot-distro sh napcat -- bash -c \"脚本控制命令\"${NC}"
-    # echo -e " ${RED}注意: 若在termux中使用screen则不能使用脚本管理多开, 请自行使用旧方法screen多开${NC}"
 }
 
 oldhelp() {
@@ -302,16 +238,6 @@ oldhelp() {
     echo -e "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" ${NC}"
     echo -e "注意, 您可以随时使用${GREEN} screen -r napcat ${NC}来进入后台进程并使用${GREEN} ctrl + a + d ${NC}离开(离开不会关闭后台进程)。"
     echo -e "停止后台运行 请输入${GREEN} screen -S napcat -X quit${NC}"
-    echo
-    echo -e "注意, 您需要手动执行以下命令${GREEN} cp -f $target_folder/napcat/config/napcat.json $target_folder/napcat/config/napcat_QQ号码.json${NC}"
-    echo -e "输入${GREEN} env -C $target_folder/napcat.packet ./napcat.packet.linux ${NC}命令启动DLC。"
-    echo -e "保持后台运行 请输入${GREEN} screen -dmS napcatdlc bash -c \"env -C $target_folder/napcat.packet ./napcat.packet.linux\"${NC}"
-    echo -e "停止后台运行 请输入${GREEN} screen -S napcatdlc -X quit${NC}"
-    # echo " termux ${NC}"
-    # echo -e "\n请输入${GREEN} proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"${NC} 命令启动。"
-    # echo "保持后台运行 请输入${GREEN} screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox\"'${NC}"
-    # echo "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c 'proot-distro sh napcat -- bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"'${NC}"
-    # echo "注意, 您可以随时使用${GREEN}screen -r napcat ${NC}来进入后台进程并使用${GREEN} ctrl + a + d ${NC}离开(离开不会关闭后台进程)。"
 }
 
 case "$1" in
