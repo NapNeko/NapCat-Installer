@@ -543,6 +543,7 @@ function check_napcat() {
                 install_napcat
             else
                 log "已安装最新版本, 无需更新。"
+                check_napcat_cli
             fi
         else
             install_napcat
@@ -652,9 +653,9 @@ function install_napcat() {
     if [ "$use_cli" = "y" ]; then
         install_napcat_cli
     elif [ "$use_cli" = "n" ]; then
-        log "跳过安装CLI。"
+        check_napcat_cli
     else
-        log "跳过安装CLI。"
+        check_napcat_cli
     fi
 
     webui_config="${target_folder}/napcat/config/webui.json"
@@ -670,6 +671,15 @@ cat <<EOF > "$webui_config"
     "loginRate": 5
 }
 EOF
+    fi
+}
+
+function check_napcat_cli() {
+    if [ -f "/usr/local/bin/napcat" ]; then
+        log "检测到已安装CLI, 开始更新。" 
+        install_napcat_cli
+    else
+        log "跳过安装CLI。"
     fi
 }
 
