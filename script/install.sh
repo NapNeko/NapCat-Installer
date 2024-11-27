@@ -197,7 +197,7 @@ function download_napcat() {
         
         curl -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
-            log "文件下载失败, 请检查错误。"
+            log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
             clean
             exit 1
         fi
@@ -216,7 +216,7 @@ function download_napcat() {
                     log "${default_file} 成功重命名。"
                 fi
             else
-                log "文件下载失败, 请检查错误。"
+                log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
                 clean
                 exit 1
             fi
