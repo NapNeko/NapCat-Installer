@@ -187,34 +187,39 @@ function clean() {
 
 function download_napcat() {
     create_tmp_folder
-    network_test "Github"
-    napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
     default_file="NapCat.Shell.zip"
-
-    curl -L -# "${napcat_download_url}" -o "${default_file}"
-    if [ $? -ne 0 ]; then
-        log "文件下载失败, 请检查错误。"
-        clean
-        exit 1
-    fi
-
     if [ -f "${default_file}" ]; then
-        log "${default_file} 成功下载。"
+        log "检测到已下载NapCat安装包,跳过下载..."
     else
-        ext_file=$(basename "${napcat_download_url}")
-        if [ -f "${ext_file}" ]; then
-            sudo mv "${ext_file}" "${default_file}"
-            if [ $? -ne 0 ]; then
-                log "文件更名失败, 请检查错误。"
-                clean
-                exit 1
-            else
-                log "${default_file} 成功重命名。"
-            fi
-        else
+        log "开始下载NapCat安装包,请稍等..."
+        network_test "Github"
+        napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
+        
+        curl -L -# "${napcat_download_url}" -o "${default_file}"
+        if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。"
             clean
             exit 1
+        fi
+
+        if [ -f "${default_file}" ]; then
+            log "${default_file} 成功下载。"
+        else
+            ext_file=$(basename "${napcat_download_url}")
+            if [ -f "${ext_file}" ]; then
+                sudo mv "${ext_file}" "${default_file}"
+                if [ $? -ne 0 ]; then
+                    log "文件更名失败, 请检查错误。"
+                    clean
+                    exit 1
+                else
+                    log "${default_file} 成功重命名。"
+                fi
+            else
+                log "文件下载失败, 请检查错误。"
+                clean
+                exit 1
+            fi
         fi
     fi
 
