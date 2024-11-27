@@ -11,6 +11,8 @@ curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script
 ```bash
 curl -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
 ```
+注意：如果无法下载NapCat.Shell.zip以及QQ安装包请尝试手动下载并将QQ安装包重命名为QQ.deb或者QQ.rpm, NapCat.Shell.zip无需更改名字。
+两者的下载链接脚本会给出，当然你也可以先下载再执行脚本。
 <details>
   <summary>命令选项(高级用法)</summary>
 
