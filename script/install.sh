@@ -512,7 +512,7 @@ function check_napcat() {
 
 function install_napcat() {
     if [ ! -d "${TARGET_FOLDER}/napcat" ]; then
-        sudo mkdir "${TARGET_FOLDER}/napcat/"
+        sudo mkdir -p "${TARGET_FOLDER}/napcat/"
     fi
 
     log "正在移动文件..."
