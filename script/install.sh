@@ -108,7 +108,7 @@ function network_test() {
     proxy_num=${proxy_num:-9}
 
     if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghp.ci" "https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghp.ci" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.rainbond.cc" "docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "hub.021212.xyz:8080" "docker.registry.cyou")
