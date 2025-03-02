@@ -9,7 +9,7 @@ BLUE='\033[0;1;34;94m'
 NC='\033[0m'
 
 QQ=$2
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
 CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
 PID_FILE="/var/run/napcat_$QQ.pid"
 LOG_FILE="/var/log/napcat_$QQ.log"
