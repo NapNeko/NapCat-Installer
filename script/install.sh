@@ -158,8 +158,6 @@ function install_dependency() {
         execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
     log "更新依赖成功..."
-    execute_command "pkill -f Xvfb"
-    log "清理xvfb成功..."
 }
 
 function create_tmp_folder() {
