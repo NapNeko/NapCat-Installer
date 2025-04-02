@@ -3,13 +3,24 @@ NapCat 启动!
 
 ## 使用
 ### Linux(支持Ubuntu 20+/Debian 10+, Centos系仅支持9)
-在需要的文件夹 执行此代码 稍等片刻即可运行
+在需要的文件夹 执行此代码 稍等片刻即可运行 任选一个 其余为镜像
+
 ```bash
 curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh
 ```
+
 ```bash
 curl -o napcat.sh https://github.moeyy.xyz/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
 ```
+
+```bash
+curl -o napcat.sh https://jiashu.1win.eu.org/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
+```
+
+```bash
+curl -o napcat.sh https://jiashu.1win.eu.org/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
+```
+
 国外服务器可使用以下命令
 ```bash
 curl -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
