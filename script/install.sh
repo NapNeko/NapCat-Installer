@@ -241,8 +241,12 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
-    linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
+    #固定 3.2.16-32869
+    linuxqq_target_version="3.2.16-32869"
+
+    #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
+    #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
+    
 }
 
 function compare_linuxqq_versions() {
@@ -279,7 +283,7 @@ function compare_linuxqq_versions() {
 function check_linuxqq(){
     get_qq_target_version
     linuxqq_package_name="linuxqq"
-    if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]] || [[ -z "${linuxqq_target_verhash}" || "${linuxqq_target_verhash}" == "null" ]]; then
+    if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
         log "无法获取目标QQ版本, 请检查错误。"
         exit 1
     fi
@@ -387,20 +391,34 @@ function check_linuxqq(){
 }
 
 function install_linuxqq() {
-    base_url="https://dldir1.qq.com/qqfile/qq/QQNT/${linuxqq_target_verhash}/linuxqq_${linuxqq_target_version}"
+    #base_url="https://dldir1.qq.com/qqfile/qq/QQNT/${linuxqq_target_verhash}/linuxqq_${linuxqq_target_version}"
     get_system_arch
     log "安装LinuxQQ..."
+    # if [ "${system_arch}" = "amd64" ]; then
+    #     if [ "${package_installer}" = "rpm" ]; then
+    #         qq_download_url="${base_url}_x86_64.rpm"
+    #     elif [ "${package_installer}" = "dpkg" ]; then
+    #         qq_download_url="${base_url}_amd64.deb"
+    #     fi
+    # elif [ "${system_arch}" = "arm64" ]; then
+    #     if [ "${package_installer}" = "rpm" ]; then
+    #         qq_download_url="${base_url}_aarch64.rpm"
+    #     elif [ "${package_installer}" = "dpkg" ]; then
+    #         qq_download_url="${base_url}_arm64.deb"
+    #     fi
+    # fi
+
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="${base_url}_x86_64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.16_250401_x86_64_01.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="${base_url}_amd64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.16_250401_amd64_01.deb"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="${base_url}_aarch64.rpm"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.16_250401_aarch64_01.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="${base_url}_arm64.deb"
+            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/Linux/QQ_3.2.16_250401_arm64_01.deb"
         fi
     fi
 
