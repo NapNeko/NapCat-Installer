@@ -7,6 +7,9 @@ NapCat 启动!
 ```bash
 curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh
 ```
+```bash
+curl -o napcat.sh https://github.moeyy.xyz/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
+```
 国外服务器可使用以下命令
 ```bash
 curl -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/install.sh && sudo bash napcat.sh
