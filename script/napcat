@@ -1,288 +1,578 @@
 #!/bin/bash
 
-MAGENTA='\033[0;1;35;95m'
-RED='\033[0;1;31;91m'
-YELLOW='\033[0;1;33;93m'
-GREEN='\033[0;1;32;92m'
-CYAN='\033[0;1;36;96m'
-BLUE='\033[0;1;34;94m'
-NC='\033[0m'
+# --- 基本配置 ---
+NAPCAT_DIR="/opt/QQ/resources/app/app_launcher/napcat"
+CONFIG_DIR="$NAPCAT_DIR/config" # 与其他脚本保持一致
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+BOOT_SCRIPT="$SCRIPT_DIR/_napcat_Boot"
+CONFIG_SCRIPT="$SCRIPT_DIR/_napcat_Config"
+API_SCRIPT="$SCRIPT_DIR/api.sh"
+INIT_FLAG="/var/run/NapcatShellinit.flag" # 首次运行标记文件
+INSTALL_SCRIPT_URL="https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh"
+INSTALL_SCRIPT_LOCAL="napcat_install.sh" # 本地安装脚本文件名
 
-QQ=$2
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
-CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q $QQ"
-PID_FILE="/var/run/napcat_$QQ.pid"
-LOG_FILE="/var/log/napcat_$QQ.log"
+# --- Dialog 颜色定义 ---
+RESET='\Zn'
+BOLD='\Zb'
+FG_BLACK='\Z0'
+FG_RED='\Z1'
+FG_GREEN='\Z2'
+FG_YELLOW='\Z3'
+FG_BLUE='\Z4'
+FG_MAGENTA='\Z5'
+FG_CYAN='\Z6'
+FG_WHITE='\Z7'
 
-start() {
-    if [ -z "$QQ" ]; then
-        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 start 3116556127${NC}"
-        exit 1
+# --- ANSI 颜色定义 (用于 echo -e) ---
+ANSI_RESET='\e[0m'
+ANSI_BOLD='\e[1m'
+ANSI_RED='\e[31m'
+ANSI_GREEN='\e[32m'
+ANSI_YELLOW='\e[33m'
+ANSI_BLUE='\e[34m'
+ANSI_MAGENTA='\e[35m'
+ANSI_CYAN='\e[36m'
+ANSI_WHITE='\e[37m'
+
+# --- Root 权限检查 ---
+if [[ $EUID -ne 0 ]]; then
+   if sudo -n true &> /dev/null; then
+       sudo "$0" "$@"
+       exit $?
+   else
+       if command -v dialog &> /dev/null; then
+           dialog --colors --title "需要权限" --msgbox "${FG_YELLOW}此脚本需要 root 权限来执行安装、管理服务和读写系统文件。\n\n将通过 sudo 请求密码以获取权限。${RESET}" 10 70 2>&1 >/dev/tty
+           clear
+       else
+           echo -e "${ANSI_YELLOW}提示: 此脚本需要 root 权限。${ANSI_RESET}" >&2
+           echo "将通过 sudo 请求密码以获取权限..." >&2
+       fi
+       sudo "$0" "$@"
+       exit $?
+   fi
+fi
+
+# --- 依赖检查 (dialog 必须先检查，因为后续提示依赖它) ---
+if ! command -v dialog &> /dev/null; then
+    echo -e "${ANSI_RED}错误: 核心依赖 'dialog' 未找到！${ANSI_RESET}" >&2
+    echo "请先手动安装 dialog (例如: sudo apt install dialog) 再运行此脚本。" >&2
+    exit 1
+fi
+
+# 支持的系统有ubuntu20+/debian10+、centos7+
+
+# --- Napcat 安装检查 ---
+if [[ ! -d "$NAPCAT_DIR" ]]; then
+    dialog --colors --title "Napcat 未安装" --yesno "检测到 Napcat 可能未安装 (目录 '$NAPCAT_DIR' 不存在)。\n\n是否现在下载并执行官方安装脚本？" 10 70 2>&1 >/dev/tty
+    choice=$?
+    clear
+    if [[ $choice -eq 0 ]]; then # Yes
+        dialog --colors --title "正在安装 Napcat" --infobox "正在从 $INSTALL_SCRIPT_URL 下载安装脚本..." 5 70
+        if curl -Lo "$INSTALL_SCRIPT_LOCAL" "$INSTALL_SCRIPT_URL"; then
+            dialog --colors --title "正在安装 Napcat" --infobox "下载完成，正在执行安装脚本 (sudo bash $INSTALL_SCRIPT_LOCAL)..." 5 70
+            # 赋予执行权限并执行
+            chmod +x "$INSTALL_SCRIPT_LOCAL"
+            if sudo bash "$INSTALL_SCRIPT_LOCAL"; then
+                dialog --colors --title "安装成功" --msgbox "Napcat 安装脚本执行成功！\n请重新运行 NapcatShell 以继续。" 8 60
+                rm -f "$INSTALL_SCRIPT_LOCAL" # 清理安装脚本
+                exit 0
+            else
+                dialog --colors --title "安装失败" --msgbox "${FG_RED}Napcat 安装脚本执行失败。${RESET}\n请检查上面的错误信息或尝试手动安装。" 8 60
+                rm -f "$INSTALL_SCRIPT_LOCAL" # 清理安装脚本
+                exit 1
+            fi
+        else
+            dialog --colors --title "下载失败" --msgbox "${FG_RED}无法下载安装脚本: $INSTALL_SCRIPT_URL${RESET}\n请检查网络连接或 URL 是否有效。" 8 70
+            exit 1
+        fi
+    else # No or Cancel
+        dialog --colors --title "已取消" --msgbox "已跳过 Napcat 安装。脚本无法继续。" 6 50
+        exit 0
     fi
-    if [ -f "$PID_FILE" ] && sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
-        echo -e "${RED}服务已运行 (PID: $(cat "$PID_FILE"))${NC}"
-    else
-        touch "$PID_FILE"
-        cp -f /opt/QQ/resources/app/app_launcher/napcat/config/napcat.json /opt/QQ/resources/app/app_launcher/napcat/config/napcat_$QQ.json
-        echo -e "${MAGENTA}启动 napcat 服务中 QQ: $QQ...${NC}"
-        exec $CMD >> "$LOG_FILE" 2>&1 &
-        echo $! > "$PID_FILE"
-        echo -e "${GREEN}服务已启动 (PID: $(cat "$PID_FILE"))${NC}"
-    fi
-}
+fi
 
-stop() {
-    if [ -z "$QQ" ]; then
-        pid_files=($(sudo find /var/run/ -name 'napcat_*.pid'))
-        for pid_file in "${pid_files[@]}"; do
-            echo -e "${MAGENTA}停止 napcat 服务 (PID: $(cat "$pid_file"))...${NC}"
-            QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
-            sudo pkill -f "qq --no-sandbox -q $QQ" && sudo rm -f "$pid_file"
-        done
-        echo -e "${RED}所有服务已停止${NC}"
-        return 0
-    fi
+# --- 首次运行依赖检查与安装 ---
+if [[ ! -f "$INIT_FLAG" ]]; then
+    dialog --colors --title "首次运行设置" --infobox "正在进行首次运行设置，检查所需依赖..." 5 60
+    sleep 1
 
-    if [ ! -f "$PID_FILE" ] || ! sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
-        echo -e "${GREEN}服务未运行${NC}"
-        sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
-    else
-        echo -e "${MAGENTA}停止 napcat 服务中 QQ: $QQ...${NC}"
-        sudo pkill -f "qq --no-sandbox -q $QQ" && sudo rm -f "$PID_FILE" && sudo rm -f "$LOG_FILE"
-        echo -e "${RED}服务已停止${NC}"
-    fi
-}
+    dependencies=("sudo" "dialog" "jq" "pgrep" "ffmpeg" "curl" "ps" "kill" "grep" "sed" "tee" "mktemp" "flock" "ss") # 添加更多基础命令
+    missing_deps=()
+    install_needed=false
 
-restart() {
-    if [ -z "$QQ" ]; then
-        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 restart 3116556127${NC}"
-        exit 1
-    fi
+    # 首次检查
+    for cmd in "${dependencies[@]}"; do
+        if ! command -v "$cmd" &> /dev/null; then
+            missing_deps+=("$cmd")
+            install_needed=true
+        fi
+    done
 
-    echo -e "${MAGENTA}重启 napcat 服务中 QQ: $QQ...${NC}"
-    stop
-    sleep 2
-    start
-}
+    if $install_needed; then
+        dialog --colors --title "依赖缺失" --infobox "检测到以下依赖缺失，将尝试自动安装：\n${missing_deps[*]}" 8 60
+        sleep 2
 
-status() {
-    if [ -z "$QQ" ]; then
-        echo -e "${YELLOW}当前正在运行的服务有:${NC}"
-        for pid_file in /var/run/napcat_*.pid; do
-            if [ -f "$pid_file" ]; then
-                QQ=$(basename "$pid_file" .pid | sed 's/napcat_//')
-                if sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
-                    echo -e "${GREEN}$QQ 运行中 (PID: $(cat "$pid_file"))${NC}"
-                else
-                    echo -e "${RED}$QQ 未运行${NC}"
+        package_manager=""
+        install_cmd=""
+        update_cmd=""
+        install_opts="-y" # 默认使用 -y
+
+        if command -v apt-get &> /dev/null; then
+            package_manager="apt-get"
+            update_cmd="sudo apt-get update"
+            # Debian/Ubuntu 包名映射 (可能不完整)
+            declare -A pkg_map=( ["pgrep"]="procps" ["ffmpeg"]="ffmpeg" ["jq"]="jq" ["dialog"]="dialog" ["curl"]="curl" ["ps"]="procps" ["kill"]="procps" ["grep"]="grep" ["sed"]="sed" ["tee"]="coreutils" ["mktemp"]="coreutils" ["flock"]="util-linux" ["ss"]="iproute2" ["sudo"]="sudo" )
+            install_packages=()
+            for dep in "${missing_deps[@]}"; do
+                pkg=${pkg_map[$dep]}
+                [[ -n "$pkg" ]] && install_packages+=("$pkg")
+            done
+            # 去重
+            install_packages=($(echo "${install_packages[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+            [[ ${#install_packages[@]} -gt 0 ]] && install_cmd="sudo $package_manager install $install_opts ${install_packages[*]}"
+
+        elif command -v yum &> /dev/null; then
+            package_manager="yum"
+            update_cmd="" # yum 通常不需要显式 update
+            # CentOS/RHEL 包名映射
+            declare -A pkg_map=( ["pgrep"]="procps-ng" ["ffmpeg"]="ffmpeg" ["jq"]="jq" ["dialog"]="dialog" ["curl"]="curl" ["ps"]="procps-ng" ["kill"]="procps-ng" ["grep"]="grep" ["sed"]="sed" ["tee"]="coreutils" ["mktemp"]="coreutils" ["flock"]="util-linux" ["ss"]="iproute" ["sudo"]="sudo" )
+            # CentOS 可能需要 epel-release 来安装 jq 和 ffmpeg
+            needs_epel=false
+            for dep in "${missing_deps[@]}"; do
+                if [[ "$dep" == "jq" || "$dep" == "ffmpeg" ]]; then
+                    needs_epel=true
+                    break
                 fi
+            done
+            if $needs_epel && ! rpm -q epel-release &>/dev/null; then
+                 update_cmd="sudo yum install $install_opts epel-release" # 先装 epel
+            fi
+            install_packages=()
+            for dep in "${missing_deps[@]}"; do
+                pkg=${pkg_map[$dep]}
+                [[ -n "$pkg" ]] && install_packages+=("$pkg")
+            done
+            install_packages=($(echo "${install_packages[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+            [[ ${#install_packages[@]} -gt 0 ]] && install_cmd="sudo $package_manager install $install_opts ${install_packages[*]}"
+
+        elif command -v dnf &> /dev/null; then
+            package_manager="dnf"
+            update_cmd="" # dnf 通常不需要
+            # Fedora 包名映射
+             declare -A pkg_map=( ["pgrep"]="procps-ng" ["ffmpeg"]="ffmpeg" ["jq"]="jq" ["dialog"]="dialog" ["curl"]="curl" ["ps"]="procps-ng" ["kill"]="procps-ng" ["grep"]="grep" ["sed"]="sed" ["tee"]="coreutils" ["mktemp"]="coreutils" ["flock"]="util-linux" ["ss"]="iproute" ["sudo"]="sudo" )
+            install_packages=()
+            for dep in "${missing_deps[@]}"; do
+                pkg=${pkg_map[$dep]}
+                [[ -n "$pkg" ]] && install_packages+=("$pkg")
+            done
+            install_packages=($(echo "${install_packages[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
+            [[ ${#install_packages[@]} -gt 0 ]] && install_cmd="sudo $package_manager install $install_opts ${install_packages[*]}"
+        else
+            dialog --colors --title "错误" --msgbox "${FG_RED}无法识别的包管理器。请手动安装以下依赖：${RESET}\n${missing_deps[*]}" 10 60
+            exit 1
+        fi
+
+        # 执行安装
+        if [[ -n "$install_cmd" ]]; then
+            dialog --colors --title "正在安装依赖" --infobox "执行更新命令: $update_cmd\n执行安装命令: $install_cmd" 10 70
+            eval "$update_cmd" # 执行更新命令
+            if eval "$install_cmd"; then
+                dialog --colors --title "安装成功" --infobox "依赖安装尝试完成。" 5 60
+                sleep 1
+            else
+                dialog --colors --title "安装失败" --msgbox "${FG_RED}依赖安装失败。${RESET}\n请尝试手动安装缺失的依赖。" 8 60
+                # 不退出，继续检查，让用户知道哪些还没装上
+            fi
+        else
+             dialog --colors --title "警告" --msgbox "${FG_YELLOW}未能确定需要安装的包，请手动检查依赖。${RESET}" 8 60
+        fi
+
+        # 再次检查依赖
+        missing_deps=()
+        for cmd in "${dependencies[@]}"; do
+            if ! command -v "$cmd" &> /dev/null; then
+                missing_deps+=("$cmd")
             fi
         done
-    else
-        if [ -f "$PID_FILE" ] && sudo ps aux | grep -v "grep" | grep -q "qq --no-sandbox -q $QQ" > /dev/null 2>&1; then
-            echo -e "${GREEN}服务运行中 QQ: $QQ (PID: $(cat "$PID_FILE"))${NC}"
-        else
-            echo -e "${RED}服务未运行 QQ: $QQ${NC}"
+
+        if [[ ${#missing_deps[@]} -gt 0 ]]; then
+            dialog --colors --title "依赖检查失败" --msgbox "${FG_RED}以下依赖在尝试安装后仍然缺失：${RESET}\n${missing_deps[*]}\n\n${FG_RED}脚本无法继续，请手动安装它们。${RESET}" 12 60
+            exit 1
         fi
-    fi
-}
 
-log() {
-    if [ -z "$QQ" ]; then
-        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 log 3116556127${NC}"
-        exit 1
-    fi
+    fi # end if $install_needed
 
-    if [ -f "$LOG_FILE" ]; then
-        tail -n 50 "$LOG_FILE"
-        tail -f "$LOG_FILE"
+    # 所有依赖检查通过，创建标记文件
+    dialog --colors --title "设置完成" --infobox "依赖检查通过，创建首次运行标记..." 5 60
+    if echo "1" | sudo tee "$INIT_FLAG" > /dev/null; then
+        sleep 1
     else
-        echo -e "${RED}日志文件不存在: $LOG_FILE${NC}"
+        dialog --colors --title "警告" --msgbox "${FG_YELLOW}无法创建首次运行标记文件 '$INIT_FLAG'。${RESET}\n依赖检查可能会在下次运行时重复执行。" 8 70
+        sleep 2
     fi
-}
-
-startup() {
-    if [ -z "$QQ" ]; then
-        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 startup 3116556127${NC}"
-        exit 1
-    fi
-
-    if [ -f "/etc/init.d/nc_${QQ}" ]; then
-        echo -e "${GREEN}已存在QQ${QQ}的开机自启动服务${NC}"
-        exit 1
-    fi
-
-cat <<EOF > "/etc/init.d/nc_${QQ}"
-#!/bin/bash
-### BEGIN INIT INFO
-# Provides:          nc_${QQ}
-# Required-Start:    \$network \$remote_fs \$syslog
-# Required-Stop:     \$network \$remote_fs \$syslog
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
-# Short-Description: Manage nc_${QQ} service
-# Description:       Start of nc_${QQ} service.
-### END INIT INFO
-
-PATH=/usr/local/sbin:/usr/local/bin:/sbin:bin:/usr/sbin:/usr/bin
-CMD="sudo /usr/bin/xvfb-run -a qq --no-sandbox -q ${QQ}"
-PID_FILE="/var/run/napcat_${QQ}.pid"
-LOG_FILE="/var/log/napcat_${QQ}.log"
-
-start() {
-    touch "\$PID_FILE"
-    exec \$CMD >> "\$LOG_FILE" 2>&1 &
-    echo \$! > "\$PID_FILE"
-    echo "nc sucess"
-}
-
-case "\$1" in
-    start)
-        start
-        ;;
-    *)
-        exit 1
-        ;;
-esac
-
-exit 0
-EOF
-
-    sudo chmod +x /etc/init.d/nc_${QQ}
-    sudo update-rc.d nc_${QQ} defaults
-    echo -e "${MAGENTA}已添加QQ ${QQ}的开机自启动服务${NC}"
-}
-
-startdown() {
-    if [ -z "$QQ" ]; then
-        echo -e "${RED}请传入QQ号,如${NC}${GREEN} $0 startdown 3116556127${NC}"
-        exit 1
-    fi
-
-    if [ ! -f "/etc/init.d/nc_${QQ}" ]; then
-        echo -e "${RED}不存在QQ ${QQ}的开机自启动服务${NC}"
-        exit 1
-    fi
-
-    sudo update-rc.d nc_${QQ} remove
-    sudo rm -f /etc/init.d/nc_${QQ}
-    echo -e "${MAGENTA}已取消QQ ${QQ}的开机自启动服务${NC}"
-}
-
-update() {
-    stop
-    curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh | sudo bash -s -- --docker n --cli y
-}
-
-rebuild() {
-    stop
-    curl -sSL https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh | sudo bash -s -- --docker n --cli y --force
-}
-
-remove() {
-    stop
-    if command -v apt &> /dev/null; then
-        sudo apt remove linuxqq -y
-    elif command -v yum &> /dev/null; then
-        sudo yum remove linuxqq -y
-    fi
-
-    if command -v dpkg &> /dev/null; then
-        sudo dpkg -P linuxqq
-    elif command -v rpm &> /dev/null; then
-        sudo rpm -e --nodeps linuxqq
-    fi
-
-    sudo rm -rf /opt/QQ
-    sudo rm -rf /root/.config/QQ
-    sudo rm -f /usr/local/bin/napcat
-    echo "卸载完成"
-    echo -e "${MAGENTA}江${RED}湖${GREEN}不${CYAN}散，${MAGENTA}有${RED}缘${GREEN}再${CYAN}见。${NC}"
-}
-
-help() {
     clear
-    echo -e " ${MAGENTA}┌${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}${RED}─┐${NC}"
-    echo -e " ${MAGENTA}│${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA} ${RED}│${NC}"
-    echo -e " ${RED}│${YELLOW}██${GREEN}█╗${CYAN}  ${BLUE} █${MAGENTA}█╗${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN}██${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}█╗${RED}  ${YELLOW}  ${GREEN} █${CYAN}██${BLUE}██${MAGENTA}╗ ${RED}  ${YELLOW}  ${GREEN}██${CYAN}██${BLUE}██${MAGENTA}██${RED}╗${YELLOW}│${NC}"
-    echo -e " ${YELLOW}│${GREEN}██${CYAN}██${BLUE}╗ ${MAGENTA} █${RED}█║${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}══${RED}═╝${YELLOW}  ${GREEN}  ${CYAN}██${BLUE}╔═${MAGENTA}═█${RED}█╗${YELLOW}  ${GREEN}  ${CYAN}╚═${BLUE}═█${MAGENTA}█╔${RED}══${YELLOW}╝${YELLOW}│${NC}"
-    echo -e " ${GREEN}│${CYAN}██${BLUE}╔█${MAGENTA}█╗${RED} █${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}╔╝${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}║ ${RED}  ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}██${MAGENTA}██${RED}██${YELLOW}█║${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA} █${RED}█║${YELLOW}  ${GREEN} ${GREEN}│${NC}"
-    echo -e " ${CYAN}│${BLUE}██${MAGENTA}║╚${RED}██${YELLOW}╗█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}═█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}══${GREEN}╝ ${CYAN}  ${BLUE}  ${MAGENTA}██${RED}║ ${YELLOW}  ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}██${RED}╔═${YELLOW}═█${GREEN}█║${CYAN}  ${BLUE}  ${MAGENTA}  ${RED} █${YELLOW}█║${GREEN}  ${CYAN} ${CYAN}│${NC}"
-    echo -e " ${BLUE}│${MAGENTA}██${RED}║ ${YELLOW}╚█${GREEN}██${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN} █${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN}  ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}╚█${YELLOW}██${GREEN}██${CYAN}█╗${BLUE}  ${MAGENTA}  ${RED}██${YELLOW}║ ${GREEN} █${CYAN}█║${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW} █${GREEN}█║${CYAN}  ${BLUE} ${BLUE}│${NC}"
-    echo -e " ${MAGENTA}│${RED}╚═${YELLOW}╝ ${GREEN} ╚${CYAN}══${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN} ╚${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN}  ${BLUE}  ${MAGENTA}  ${RED}  ${YELLOW} ╚${GREEN}══${CYAN}══${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}╚═${GREEN}╝ ${CYAN} ╚${BLUE}═╝${MAGENTA}  ${RED}  ${YELLOW}  ${GREEN} ╚${CYAN}═╝${BLUE}  ${MAGENTA} ${MAGENTA}│${NC}"
-    echo -e " ${RED}└${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}${YELLOW}─┘${NC}"
-    echo
-    echo -e "${MAGENTA}napcat 控制脚本${NC}"
-    echo
-    echo -e "${MAGENTA}使用方法: ${NC}"
-    echo -e "${CYAN}  napcat {start|stop|restart|status|log|startup|startdown} QQ${NC}"
-    echo -e "${CYAN}  napcat {status|update|rebuild|remove|help|oldhelp}${NC}"
-    echo
-    echo -e " ${GREEN}   napcat start {QQ}                     ${MAGENTA}启动对应QQ号的NAPCAT${NC}"
-    echo -e " ${GREEN}   napcat stop {QQ}[可选]                ${MAGENTA}停止所有[对应QQ号]的NAPCAT及DLC${NC}"
-    echo -e " ${GREEN}   napcat restart {QQ}                   ${MAGENTA}重启对应QQ号的NAPCAT${NC}"
-    echo -e " ${GREEN}   napcat status {QQ}[可选]              ${MAGENTA}查看所有[对应QQ号]的NAPCAT${NC}"
-    echo -e " ${GREEN}   napcat log {QQ}                       ${MAGENTA}查看对应QQ号的NAPCAT日志${NC}"
-    echo -e " ${GREEN}   napcat startup {QQ}                   ${MAGENTA}添加开机自启动对应QQ号的NAPCAT及DLC${NC}"
-    echo -e " ${GREEN}   napcat startdown {QQ}                 ${MAGENTA}取消开机自启动对应QQ号的NAPCAT及DLC${NC}"
-    echo -e " ${GREEN}   napcat update                         ${MAGENTA}更新 NAPCAT及QQ${NC}"
-    echo -e " ${GREEN}   napcat rebuild                        ${MAGENTA}重建 NAPCAT及QQ${NC}"
-    echo -e " ${GREEN}   napcat remove                         ${MAGENTA}卸载 NAPCAT及QQ${NC}"
-    echo -e " ${GREEN}   napcat help                           ${MAGENTA}查看此帮助${NC}"
-    echo -e " ${GREEN}   napcat oldhelp                        ${MAGENTA}查看旧方法(若此脚本不生效)${NC}"
+fi # end if init flag check
+
+check_for_update() {
+    local urls=(
+        "https://nclatest.znin.net/"
+        "https://jiashu.1win.eu.org/https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest"
+		"https://napcatversion.109834.xyz/https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest"
+        "https://spring-night-57a1.3540746063.workers.dev/https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest"
+		"https://api.github.com/repos/NapNeko/NapCatQQ/releases/latest"
+    )
+    local result_file
+    result_file=$(mktemp) # Make temp file local to function scope
+    # Setup trap local to the function's execution context
+    trap 'rm -f "$result_file"; pkill -P $$ &>/dev/null' RETURN INT TERM
+
+    local latest_tag_numeric=""
+    local original_tag=""
+    local numeric_tag=""
+
+    # --- 子函数：获取标签并写入临时文件 (保持不变) ---
+    fetch_and_write() {
+        local url="$1"
+        local tmp_file="$2"
+        local tag
+        # 将 jq 的 stderr 重定向到 /dev/null
+        tag=$(curl -s --connect-timeout 5 "$url" | jq -r '.tag_name // empty' 2>/dev/null)
+        # 检查 jq 的退出状态以及 tag 是否有效
+        if [[ $? -eq 0 ]] && [[ -n "$tag" ]] && [[ "$tag" != "null" ]]; then
+            (
+                # 使用 flock 确保只有一个进程写入文件
+                flock -n 9 || exit 1
+                # 再次检查文件是否为空，防止并发写入覆盖
+                if [[ ! -s "$tmp_file" ]]; then
+                    echo "$tag" > "$tmp_file"
+                fi
+            ) 9>"$tmp_file"
+        # else # 可选：如果需要记录 jq 失败，可以在这里添加日志
+            # echo "jq failed or returned empty/null for $url" >&2
+        fi
+    }
+    # --- 子函数结束 ---
+
+    # --- 并发获取远程版本 ---
+    local url
+    for url in "${urls[@]}"; do
+        fetch_and_write "$url" "$result_file" &
+    done
+
+    local wait_timeout=5
+    local i
+    for (( i=0; i < wait_timeout * 10; i++ )); do
+        if [[ -s "$result_file" ]]; then
+            break
+        fi
+        sleep 0.1
+    done
+    # --- 获取结束 ---
+
+    # --- 处理远程版本结果 ---
+    if [[ -s "$result_file" ]]; then
+        original_tag=$(head -n 1 "$result_file")
+        # 去除 v 和 . 只留下数字
+        numeric_tag="${original_tag//[v.]/}"
+        echo "获取到最新发布版本的数字标签是: $numeric_tag"
+        latest_tag_numeric=$numeric_tag
+    else
+        echo "错误：在 ${wait_timeout} 秒内未能从任何源获取远程版本标签。" >&2
+        return -1 # API 查询失败
+    fi
+    # --- 处理结束 ---
+
+    # --- 获取并处理本地版本 ---
+    local local_file="/opt/QQ/resources/app/app_launcher/napcat/napcat.mjs"
+    local local_version_string=""
+    local local_version_numeric=""
+
+    if [[ ! -f "$local_file" ]] || [[ ! -r "$local_file" ]]; then
+        echo "错误：无法读取本地文件 '$local_file'。" >&2
+        return -1 # 无法读取本地文件，视为失败
+    fi
+
+    # 尝试提取版本字符串
+    # 使用 grep 查找包含 'const version = "' 的行，然后用 sed 提取引号内的内容
+    local_version_string=$(grep 'const version = "' "$local_file" | sed -n 's/.*const version = "\([^"]*\)".*/\1/p')
+
+    if [[ -z "$local_version_string" ]]; then
+        echo "错误：无法在 '$local_file' 中找到 'const version = \"...\"' 格式的版本号。" >&2
+        return -1 # 无法解析本地版本，视为失败
+    fi
+
+    # 去除 v 和 . 只留下数字
+    local_version_numeric="${local_version_string//[v.]/}"
+    echo "获取到本地版本的数字标签是: $local_version_numeric"
+    # --- 本地版本处理结束 ---
+
+    # --- 版本比较 ---
+    # 确保两者都是数字（或至少看起来像数字）
+    if ! [[ "$latest_tag_numeric" =~ ^[0-9]+$ ]] || ! [[ "$local_version_numeric" =~ ^[0-9]+$ ]]; then
+         echo "错误：获取到的版本号格式不正确，无法比较。" >&2
+         return -1 # 版本号格式错误
+    fi
+
+    # 使用 Bash 算术比较
+    if [[ "$latest_tag_numeric" -gt "$local_version_numeric" ]]; then
+        echo "检测到新版本 (远程: $original_tag > 本地: $local_version_string)。"
+        return 1 # API 版本大于本地版本
+    else
+        echo "当前已是最新版本或更新 (远程: $original_tag <= 本地: $local_version_string)。"
+        return 0 # API 版本小于或等于本地版本
+    fi
+    # --- 比较结束 ---
 }
 
-oldhelp() {
-    echo -e "输入${GREEN} xvfb-run -a qq --no-sandbox ${NC}命令启动。"
-    echo -e "保持后台运行 请输入${GREEN} screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" ${NC}"
-    echo -e "后台快速登录 请输入${GREEN} screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" ${NC}"
-    echo -e "注意, 您可以随时使用${GREEN} screen -r napcat ${NC}来进入后台进程并使用${GREEN} ctrl + a + d ${NC}离开(离开不会关闭后台进程)。"
-    echo -e "停止后台运行 请输入${GREEN} screen -S napcat -X quit${NC}"
+
+_get_napcat_pid_and_account() {
+    local pid_file="/var/run/napcat.pid"
+    local pid=""
+    local cmdline=""
+    local qq_account=""
+
+    if [[ ! -f "$pid_file" ]] || [[ ! -r "$pid_file" ]]; then
+        return 3 # PID 文件问题
+    fi
+
+    pid=$(cat "$pid_file")
+    if [[ -z "$pid" ]] || ! sudo kill -0 "$pid" 2>/dev/null; then
+        # sudo rm -f "$pid_file" 2>/dev/null # 可选清理
+        return 1 # 未运行
+    fi
+
+    # 尝试从主进程命令行获取
+    cmdline=$(ps -o cmd= -p "$pid" 2>/dev/null)
+    if [[ "$cmdline" =~ .*-q[[:space:]]+([0-9]{4,}) ]]; then
+        qq_account="${BASH_REMATCH[1]}"
+        echo "$qq_account" # 输出 QQ 账号
+        return 0 # 运行中
+    fi
+
+    # 尝试从子进程命令行获取
+    local child_pids=$(pgrep -P "$pid")
+    for child_pid in $child_pids; do
+        child_cmdline=$(ps -o cmd= -p "$child_pid" 2>/dev/null)
+        if [[ "$child_cmdline" =~ qq.*-q[[:space:]]+([0-9]{4,}) ]]; then
+             qq_account="${BASH_REMATCH[1]}"
+             echo "$qq_account" # 输出 QQ 账号
+             return 0 # 运行中
+        fi
+    done
+
+    # 如果都找不到
+    echo "$pid" # 输出 PID 供参考
+    return 2 # 状态未知
 }
 
-case "$1" in
-    start)
-        start
-        ;;
-    stop)
-        stop
-        ;;
-    restart)
-        restart
-        ;;
-    status)
-        status
-        ;;
-    log)
-        log
-        ;;
-    startup)
-        startup
-        ;;
-    startdown)
-        startdown
-        ;;
-    update)
-        update
-        ;;
-    rebuild)
-        rebuild
-        ;;
-    remove)
-        remove
-        ;;
-    help)
-        help
-        exit 0
-        ;;
-    oldhelp)
-        oldhelp
-        exit 0
-        ;;
-    *)
-        help
-        exit 1
-        ;;
-esac
+# 复制 get_napcat_status 函数 (或者理想情况下从共享库加载)
+get_napcat_status() {
+    local status_code
+    local output
 
+    # 调用内部函数，捕获输出和状态码
+    output=$(_get_napcat_pid_and_account)
+    status_code=$?
+
+    case $status_code in
+        0) # 运行中
+            local qq_account="$output"
+            echo -e "${FG_GREEN}运行中😋 - ${BOLD}$qq_account${RESET}"
+            ;;
+        1 | 3) # 未运行 或 PID 文件问题
+            echo -e "${FG_YELLOW}未运行😴${RESET}"
+            ;;
+        2) # 状态未知
+            local pid="$output"
+            echo -e "${FG_RED}状态未知🤔 (PID: ${BOLD}$pid${RESET})${RESET}"
+            ;;
+        *) # 其他未知错误
+             echo -e "${FG_RED}检查状态出错${RESET}"
+             ;;
+    esac
+    # 注意：此函数现在只负责 echo，不返回状态码给调用者
+}
+
+
+stop_napcat() {
+    local pid_file="/var/run/napcat.pid"
+    local pid=""
+    dialog --colors --title "停止 Napcat" --infobox "正在尝试停止 Napcat..." 5 50
+    if [[ -f "$pid_file" ]] && [[ -r "$pid_file" ]]; then
+        pid=$(cat "$pid_file")
+        if [[ -n "$pid" ]] && sudo kill -0 "$pid" 2>/dev/null; then
+            echo -e "${ANSI_YELLOW}正在终止进程 PID: $pid...${ANSI_RESET}"
+            sudo kill "$pid"
+            sleep 2
+            if sudo kill -0 "$pid" 2>/dev/null; then
+                echo -e "${ANSI_RED}正常终止失败，尝试强制终止...${ANSI_RESET}"
+                sudo kill -9 "$pid"
+                sleep 1
+            fi
+            if ! sudo kill -0 "$pid" 2>/dev/null; then
+                echo -e "${ANSI_GREEN}进程已终止。${ANSI_RESET}"
+                sudo rm -f "$pid_file"
+                dialog --colors --title "停止成功" --msgbox "Napcat 进程已停止。" 6 50
+            else
+                dialog --colors --title "停止失败" --msgbox "${FG_RED}无法停止 Napcat 进程 (PID: $pid)。${RESET}\n请手动检查。" 8 60
+            fi
+        else
+            dialog --colors --title "无需停止" --msgbox "Napcat 未在运行 (根据 PID 文件)。" 6 50
+            sudo rm -f "$pid_file" 2>/dev/null # 清理无效文件
+        fi
+    else
+        dialog --colors --title "无需停止" --msgbox "Napcat 未在运行 (无 PID 文件)。" 6 50
+    fi
+    sleep 1 # 短暂显示 echo 的信息
+}
+
+update_napcat() {
+    dialog --colors --title "更新 Napcat" --yesno "这将执行官方在线安装/更新脚本。\n\n参数: --docker n --cli y\n\n确定要继续吗？" 10 60 2>&1 >/dev/tty
+    choice=$?
+    clear
+    if [[ $choice -eq 0 ]]; then # Yes
+        dialog --colors --title "正在更新 Napcat" --infobox "正在执行在线更新脚本...\ncurl -sSL $INSTALL_SCRIPT_URL | sudo bash -s -- --docker n --cli y" 8 70
+        # 直接执行在线脚本
+        if curl -sSL "$INSTALL_SCRIPT_URL" | sudo bash -s -- --docker n --cli y; then
+            dialog --colors --title "更新成功" --msgbox "Napcat 更新脚本执行成功！" 6 50
+        else
+            dialog --colors --title "更新失败" --msgbox "${FG_RED}Napcat 更新脚本执行失败。${RESET}\n请检查网络连接或脚本输出。" 8 60
+        fi
+    else
+        dialog --colors --title "已取消" --msgbox "更新操作已取消。" 6 40
+    fi
+}
+
+view_log() {
+    local status_code
+    local output
+    local qq_account
+    local log_file
+    local pid
+
+    # 调用内部函数获取状态和账号/PID
+    output=$(_get_napcat_pid_and_account) # 获取状态和输出
+    status_code=$? # 获取退出码
+
+    case $status_code in
+        0) # 运行中 (退出码 0)
+            qq_account="$output" # 输出是 QQ 账号
+            log_file="/var/log/napcat_${qq_account}.log" # 构建日志路径
+
+            # 检查日志文件
+            if [[ ! -f "$log_file" ]] || [[ ! -r "$log_file" ]]; then
+                dialog --colors --title "错误" --msgbox "${FG_RED}无法读取日志文件: ${BOLD}$log_file${RESET}\n\n文件不存在或权限不足。${RESET}" 10 70
+                return 1 # 返回错误
+            fi
+
+            # 清屏并显示提示
+            clear
+            echo -e "${ANSI_GREEN}正在打开日志文件: ${ANSI_BOLD}$log_file${ANSI_RESET}"
+            echo -e "${ANSI_YELLOW}使用 ↑ ↓箭头键 或 PageUp/PageDown 翻页，按 'q' 退出。${ANSI_RESET}"
+            sleep 1.1 # 等待用户阅读提示 (可以考虑缩短为 1 秒)
+
+            # 使用 less 查看日志 (-R 显示颜色, +G 从末尾开始)
+            less -R +G "$log_file"
+
+            # less 退出后清理屏幕
+            clear
+            return 0 # 成功返回
+            ;;
+        1 | 3) # 未运行 (退出码 1) 或 PID 文件问题 (退出码 3)
+            dialog --colors --title "无法查看日志" --msgbox "${FG_RED}Napcat 未运行，请启动后查看日志。${RESET}" 8 60
+            return 1 # 返回错误
+            ;;
+        2) # 状态未知 (退出码 2)
+            pid="$output" # 输出是 PID
+            dialog --colors --title "无法查看日志" --msgbox "${FG_RED}无法确定 Napcat 运行账号 (PID: ${BOLD}$pid${RESET})。\n请检查 Napcat 进程或日志文件命名。${RESET}" 9 70
+            return 1 # 返回错误
+            ;;
+        *) 
+            dialog --colors --title "错误" --msgbox "${FG_RED}检查 Napcat 状态时发生未知错误。${RESET}" 8 60
+            return 1 # 返回错误
+            ;;
+    esac
+}
+# --- 主菜单循环 ---
+while true; do
+    # 检查更新
+    check_for_update
+    update_check_status=$?
+    update_display_status=""
+    case $update_check_status in
+        1) update_display_status="${FG_YELLOW}有可用更新${RESET}" ;;
+        0) update_display_status="${FG_GREEN}已是最新${RESET}" ;;
+        *) update_display_status="${FG_RED}检查失败${RESET}" ;;
+    esac
+
+    # 获取运行状态
+    NAPCAT_STATUS=$(get_napcat_status)
+
+    # 定义菜单项 (添加 LOG)
+    MENU_ITEMS=(
+        "START"  "启动 Napcat"
+        "STOP"   "停止 Napcat"
+        "CONFIG" "配置 Napcat"
+        "UPDATE" "更新 Napcat"
+        "LOG"    "查看日志"   # 新增日志选项
+    )
+
+    # 显示菜单 (调整尺寸和项目数)
+    # 显示菜单
+    CHOICE=$(dialog --colors --clear --backtitle "Napcat Shell 主菜单" \
+                    --title "🌟 NapcatShell 🌟" \
+                    --ok-label "选择" \
+                    --cancel-label "退出" \
+                    --menu "\n更新状态: ${update_display_status}\n运行状态: ${NAPCAT_STATUS}\n\n请选择操作:" \
+                    16 60 5 \
+                    "${MENU_ITEMS[@]}" \
+                    2>&1 >/dev/tty)
+
+    exit_status=$?
+    clear
+
+    case $exit_status in
+        0) # OK - 用户选择了某项
+            case "$CHOICE" in
+                "START")
+                    if [[ -f "$BOOT_SCRIPT" ]] && [[ -x "$BOOT_SCRIPT" ]]; then
+                        "$BOOT_SCRIPT" # 执行启动脚本
+                    else
+                        dialog --colors --msgbox "${FG_RED}错误：${RESET}无法找到或执行启动脚本 '$BOOT_SCRIPT'。" 8 60
+                    fi
+                    ;;
+                "STOP")
+                    stop_napcat # 调用停止函数
+                    ;;
+                "CONFIG")
+                    if [[ -f "$CONFIG_SCRIPT" ]] && [[ -x "$CONFIG_SCRIPT" ]]; then
+                        "$CONFIG_SCRIPT" # 执行配置脚本
+                    else
+                        dialog --colors --msgbox "${FG_RED}错误：${RESET}无法找到或执行配置脚本 '$CONFIG_SCRIPT'。" 8 60
+                    fi
+                    ;;
+                "UPDATE")
+                    update_napcat # 调用更新函数
+                    ;;
+                "LOG") # 新增 LOG 分支
+                    view_log # 调用查看日志函数
+                    ;;
+                *)
+                    dialog --colors --msgbox "无效的选择: '$CHOICE'" 6 40
+                    ;;
+            esac
+            ;;
+        1) # Cancel - 用户选择退出
+            echo -e "${ANSI_YELLOW}已退出 NapcatShell。${ANSI_RESET}"
+            break # 退出主循环
+            ;;
+        *) # 其他情况 (例如 ESC)
+            echo -e "${ANSI_YELLOW}操作已取消或发生未知错误 (退出码: $exit_status)。${ANSI_RESET}"
+            break # 退出主循环
+            ;;
+    esac
+done
+
+# 清理屏幕并退出
+clear
 exit 0
