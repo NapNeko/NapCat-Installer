@@ -168,10 +168,10 @@ function install_dependency() {
 
     if [ "${package_manager}" = "apt-get" ]; then
         execute_command "sudo apt-get update -y -qq" "更新软件包列表"
-        execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
+        execute_command "sudo apt-get install -y -qq dialog zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
         execute_command "sudo dnf install -y epel-release" "安装epel"
-        execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        execute_command "sudo dnf install --allowerasing -y dialog zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
     log "更新依赖成功..."
 }

@@ -1,0 +1,17 @@
+## omit the commit_types to use the default angular-style commit types
+# commit_types:
+#   - feat: adds a new feature
+#   - fix: fixes a bug
+#   - docs: changes only the documentation
+#   - style: changes the style but not the meaning of the code (such as formatting)
+#   - perf: improves performance
+#   - test: adds or corrects tests
+#   - build: changes the build system or external dependencies
+#   - chore: changes outside the code, docs, or tests
+#   - ci: changes to the Continuous Integration (CI) system
+#   - refactor: changes the code without changing behavior
+#   - revert: reverts prior changes
+scopes:
+  - readme: README.md 文档
+  - install: Napcat-Installer 主脚本
+  - todo: 待做事项，或者存在潜在bug的地方
