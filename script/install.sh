@@ -168,10 +168,10 @@ function install_dependency() {
 
     if [ "${package_manager}" = "apt-get" ]; then
         execute_command "sudo apt-get update -y -qq" "更新软件包列表"
-        execute_command "sudo apt-get install -y -qq dialog zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
+        execute_command "sudo apt-get install -y -qq  zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
         execute_command "sudo dnf install -y epel-release" "安装epel"
-        execute_command "sudo dnf install --allowerasing -y dialog zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        execute_command "sudo dnf install --allowerasing -y  zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
     log "更新依赖成功..."
 }
@@ -607,63 +607,54 @@ function check_napcat_cli() {
 
 # TODO:TUI
 function install_napcat_cli() {
-    log "准备安装/更新 NapCatQQ TUI-CLI 及其组件..."
-    network_test "Github" # Ensure proxy is tested/set for Github downloads
+    local cli_script_url_base="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script"
+    local cli_script_name="install-cli.sh"
+    local cli_script_local_path="./${cli_script_name}.download" # Download to a temporary name
+    local cli_script_url="${target_proxy:+${target_proxy}/}${cli_script_url_base}/${cli_script_name}"
+    local exit_status=1 # Default to failure
 
-    # Define files, URLs, and targets
-    local base_url="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script"
-    local target_dir="/usr/local/bin"
-    local files_to_download=("napcat" "_napcat_Boot" "_napcat_Config")
-    local download_failed=false
-
-    for file_name in "${files_to_download[@]}"; do
-        local download_url="${target_proxy:+${target_proxy}/}${base_url}/${file_name}"
-        local temp_file="${file_name}_download"
-        local target_path="${target_dir}/${file_name}"
-
-        log "下载 ${file_name} 从 ${download_url}..."
-        # Download to a temporary file first
-        sudo curl -L -# "${download_url}" -o "./${temp_file}"
-
-        if [ $? -ne 0 ]; then
-            log "${file_name} 文件下载失败, 请检查网络或链接。"
-            sudo rm -f "./${temp_file}" # Clean up failed download
-            download_failed=true
-            continue # Try downloading the next file
-        fi
-        log "${file_name} 文件下载成功: ./${temp_file}"
-
-        log "设置 ${file_name} 文件权限并移动到 ${target_path}..."
-        sudo chmod +x "./${temp_file}"
-        if [ $? -ne 0 ]; then
-            log "设置 ${file_name} 文件执行权限失败: ./${temp_file}"
-            sudo rm -f "./${temp_file}"
-            download_failed=true
-            continue
-        fi
-
-        # Move the file to the target location
-        sudo mv "./${temp_file}" "${target_path}"
-        if [ $? -ne 0 ]; then
-            log "移动 ${file_name} 文件到 ${target_path} 失败, 请检查权限。"
-            # Attempt to clean up downloaded file if move failed
-            if [ -f "./${temp_file}" ]; then # Check if it still exists before removing
-                sudo rm -f "./${temp_file}"
-            fi
-            download_failed=true
-            continue
-        else
-            log "${file_name} 文件成功移动到 ${target_path}"
-        fi
-    done
-
-    if ${download_failed}; then
-        log "警告: 部分或全部 TUI-CLI 组件安装失败, 但核心安装可能已完成。"
-        return 1 # Indicate partial or complete failure
-    else
-        log "所有 TUI-CLI 组件安装/更新成功。"
-        return 0 # Indicate success
+    # Ensure network test has run for Github to potentially set target_proxy
+    # If network_test hasn't run, run it now.
+    if [ -z "${target_proxy+x}" ]; then # Check if target_proxy is set at all
+        log "运行 TUI-CLI 安装的网络测试..."
+        network_test "Github"
+        # Allow continuing even if network_test fails, curl might still work without proxy
     fi
+
+    log "下载外部 TUI-CLI 安装脚本从 ${cli_script_url}..."
+    sudo curl -L -# "${cli_script_url}" -o "${cli_script_local_path}"
+
+    if [ $? -ne 0 ]; then
+        log "错误: TUI-CLI 安装脚本 ${cli_script_name} 下载失败。"
+        sudo rm -f "${cli_script_local_path}" # Clean up potentially partial download
+        return 1 # Indicate failure
+    fi
+
+    log "设置 TUI-CLI 安装脚本权限..."
+    sudo chmod +x "${cli_script_local_path}"
+    if [ $? -ne 0 ]; then
+        log "错误: 设置 TUI-CLI 安装脚本 (${cli_script_local_path}) 执行权限失败。"
+        sudo rm -f "${cli_script_local_path}"
+        return 1 # Indicate failure
+    fi
+
+    log "执行外部 TUI-CLI 安装脚本 (${cli_script_local_path})..."
+    # Pass the proxy number argument (use 9 for auto if not set)
+    sudo "${cli_script_local_path}" "${proxy_num_arg:-9}"
+
+    exit_status=$? # Capture the exit status of the external script
+    if [ ${exit_status} -ne 0 ]; then
+         log "外部 TUI-CLI 安装脚本执行失败 (退出码: ${exit_status})。"
+         # Decide if this should be a fatal error for the main script
+         # return 1
+    else
+         log "外部 TUI-CLI 安装脚本执行成功。"
+    fi
+
+    log "清理 TUI-CLI 安装脚本 (${cli_script_local_path})..."
+    sudo rm -f "${cli_script_local_path}"
+
+    return ${exit_status} # Return the exit status of the external script
 }
 
 function generate_docker_command() {
@@ -789,10 +780,10 @@ function docker_install() {
 function show_main_info() {
     log "\n---------------- Shell 安装完成 ----------------"
     log ""
-    log "${GREEN}启动 QQ (需要图形环境或 Xvfb):${NC}"
+    log "${GREEN}启动 Napcat (需要图形环境或 Xvfb):${NC}"
     log "  ${CYAN}xvfb-run -a qq --no-sandbox${NC}"
     log ""
-    log "${GREEN}后台运行 QQ (使用 screen):${NC}"
+    log "${GREEN}后台运行 Napcat (使用 screen):${NC}"
     log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\"${NC}"
     log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"${NC}"
     log "  附加到会话: ${CYAN}screen -r napcat${NC} (按 Ctrl+A 然后按 D 分离)"
@@ -820,24 +811,24 @@ function shell_help() {
     echo -e "${YELLOW}命令选项 (高级用法):${NC}"
     echo "您可以在 原安装命令 后面添加以下参数:"
     echo ""
-    echo "  --tui                     使用 TUI 可视化交互安装"
-    echo "  --docker [y/n]            选择安装方式 (y: Docker, n: Shell)"
-    echo "  --cli [y/n]               (Shell安装时) 是否安装 TUI-CLI 工具 (${YELLOW}推荐${NC})(允许你在ssh、没有桌面、WebUI难以使用的情况下${YELLOW}可视化交互${NC}配置Napcat)"
-    echo "  --force                   (Shell安装时) 强制重装 LinuxQQ 和 NapCat"
-    echo "  --proxy [0-n]             指定下载代理序号 (0: 不使用, 1-n: 内置列表)"
-    echo "  --qq \"<号码>\"             (Docker安装时) 指定 QQ 号码"
-    echo "  --mode [ws|reverse_ws|...] (Docker安装时) 指定运行模式"
-    echo "  --confirm [y]             (Docker安装时) 跳过最终确认直接执行"
+    echo -e "  ${CYAN}--tui${NC}                     使用 TUI 可视化交互安装"
+    echo -e "  ${CYAN}--docker${NC} [${GREEN}y${NC}/${RED}n${NC}]            选择安装方式 (${GREEN}y${NC}: Docker, ${RED}n${NC}: Shell)"
+    echo -e "  ${CYAN}--cli${NC} [${GREEN}y${NC}/${RED}n${NC}]               (Shell安装时) 是否安装 TUI-CLI 工具 (${YELLOW}推荐${NC})(允许你在ssh、没有桌面、WebUI难以使用的情况下${YELLOW}可视化交互${NC}配置Napcat)"
+    echo -e "  ${CYAN}--force${NC}                   (Shell安装时) 强制重装 LinuxQQ 和 NapCat"
+    echo -e "  ${CYAN}--proxy${NC} [${BLUE}0-n${NC}]             指定下载代理序号 (${BLUE}0${NC}: 不使用, ${BLUE}1-n${NC}: 内置列表)"
+    echo -e "  ${CYAN}--qq${NC} \"<号码>\"             (Docker安装时) 指定 QQ 号码"
+    echo -e "  ${CYAN}--mode${NC} [${BLUE}ws${NC}|${BLUE}reverse_ws${NC}|...] (Docker安装时) 指定运行模式"
+    echo -e "  ${CYAN}--confirm${NC} [${GREEN}y${NC}]             (Docker安装时) 跳过最终确认直接执行"
     echo ""
     echo -e "${YELLOW}使用示例:${NC}"
-    echo "  # 使用 TUI 安装:"
-    echo "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
+    echo -e "  ${BLUE}# 使用 TUI 安装:${NC}"
+    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
     echo ""
-    echo "  # Docker 安装 (指定 QQ, 模式, 代理, 并跳过确认):"
-    echo "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
+    echo -e "  ${BLUE}# Docker 安装 (指定 QQ, 模式, 代理, 并跳过确认):${NC}"
+    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
     echo ""
-    echo "  # Shell 安装 (不装 TUI-CLI, 不用代理, 强制重装):"
-    echo "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
+    echo -e "  ${BLUE}# Shell 安装 (不装 TUI-CLI, 不用代理, 强制重装):${NC}"
+    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
     echo ""
 }
 
