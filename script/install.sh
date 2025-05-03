@@ -43,18 +43,18 @@ function log() {
 }
 
 function print_introduction() {
-    echo -e "${BLUE}欢迎使用 NapCat 安装脚本！${NC}😋"
+    echo -e "${BLUE}下面是 NapCat 安装脚本的功能简介！${NC}😋"
     echo -e "${BLUE}--------------------------------------------------${NC}"
-    echo -e "${BLUE}安装选项说明:${NC}"
-    echo -e " ${BLUE} --tui${NC}: ${BLUE}使用图形化界面进行安装 ${NC}"
-    echo -e " ${BLUE} --docker${NC} [${GREEN}y${NC}/${RED}n${NC}]: ${BLUE}使用 Docker 进行安装 ${NC}(${GREEN}y${NC})${BLUE} 或使用 Shell 直接安装 ${NC}(${RED}n${NC})"
-    echo -e " ${BLUE}     - Docker 安装: 将${YELLOW} NapCat${NC}${BLUE} 运行在隔离的容器环境中，方便管理和迁移，但需要先安装 ${YELLOW}Docker${NC}"
-    echo -e "  ${BLUE}    - Shell 安装: 直接在当前系统环境中安装 ${YELLOW}NapCat ${BLUE}及其依赖${NC}"
-    echo -e "  ${BLUE}--cli ${NC}[${GREEN}y${NC}/${RED}n${NC}]:${BLUE} 是否安装 ${YELLOW}NapCat TUI-CLI ${NC} (${BLUE}命令行UI工具${NC}) ${BLUE}${NC}"
-    echo -e "    ${BLUE}  - NapCat TUI-CLI${NC} (${YELLOW}推荐${NC}): ${BLUE}允许你在 ssh、没有桌面、WebUI 难以使用的情况下${YELLOW}可视化交互${NC}${BLUE}配置 ${YELLOW}Napcat${NC}"
-    echo -e " ${BLUE} --force: 强制重新安装 ${YELLOW}LinuxQQ ${BLUE}和${YELLOW} NapCat ${NC}(${BLUE}仅 Shell 安装有效${NC})"
-    echo -e "  ${BLUE}--proxy${NC} [${BLUE}0-n${NC}]: ${BLUE}指定下载时使用的代理服务器序号 ${NC}(${BLUE}0 为不使用${NC})"
-    echo -e "  ${BLUE}--qq, --mode, --confirm: Docker 安装时使用的参数${NC}"
+    echo -e "${BLUE}接下来，您可以选择安装方式:${NC}"
+    echo -e "  1. ${GREEN}Docker 安装${NC}: ${BLUE}通过容器运行。${NC}"
+    echo -e "  2. ${GREEN}本地安装${NC}: ${BLUE}直接在本系统执行安装。分为下面两种：${NC}(${YELLOW}默认${NC})${NC}"
+	echo -e "  	 - ${GREEN}可视化安装${NC}: ${BLUE}通过交互式界面来引导你安装。${NC}"
+    echo -e "  	 - ${GREEN}Shell 安装${NC}: ${BLUE}直接在当前Shell会话执行安装。${NC}(${YELLOW}默认${NC})${NC}"
+    echo ""
+    echo -e "${BLUE}您可以选择安装的组件方式:${NC}"
+    echo -e "  - ${CYAN}NapCat TUI-CLI${NC}: ${BLUE}允许你在 ssh、没有桌面、WebUI 难以使用的情况下可视化交互配置 Napcat${NC}"
+	echo ""
+    echo -e "${BLUE}使用 --help 来获取更多功能介绍${NC}"
     echo -e "${BLUE}--------------------------------------------------${NC}"
 }
 
@@ -946,7 +946,7 @@ while [[ $# -gt 0 ]]; do
         ;;
     --help | -h)
         logo
-        print_introduction
+        #print_introduction
         shell_help
         exit 0
         ;;
