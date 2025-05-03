@@ -33,48 +33,55 @@ function log() {
 target_proxy="" # Global variable for proxy URL
 
 function network_test() {
-    local parm1=${1}
+    # $1 is now the proxy number argument
+    local proxy_num_arg=${1:-9} # Get proxy number from argument, default 9 (auto)
+    local parm1="Github" # Hardcode service to Github for this script
     local found=0
-    target_proxy=""
-    proxy_num=${proxy_num:-9}
+    target_proxy="" # Reset target_proxy
 
-    if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
-        check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
-    elif [ "${parm1}" == "Docker" ]; then
-        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "hub.021212.xyz" "docker.registry.cyou")
-        check_url=""
-    fi
+    # Define Github proxy array and check URL
+    local proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+    local check_url="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/tui-cli/napcat" # Updated check URL
 
-    if [ ! -z "${proxy_num}" ] && [ "${proxy_num}" -ge 1 ] && [ "${proxy_num}" -le ${#proxy_arr[@]} ]; then
-        log "手动指定代理: ${proxy_arr[$proxy_num - 1]}"
-        target_proxy="${proxy_arr[$proxy_num - 1]}"
+    # Check if a specific proxy number is requested and valid
+    if [[ "${proxy_num_arg}" =~ ^[1-9][0-9]*$ ]] && [ "${proxy_num_arg}" -le ${#proxy_arr[@]} ]; then
+        log "手动指定代理序号: ${proxy_num_arg}"
+        target_proxy="${proxy_arr[$proxy_num_arg - 1]}"
+        log "将使用${parm1}代理: ${target_proxy}"
+        # Test the specified proxy (optional but good practice)
+        status=$(curl --connect-timeout 5 -o /dev/null -s -w "%{http_code}" "${target_proxy}/${check_url}")
+        if [ ${status} -ne 200 ]; then
+             log "警告: 手动指定的代理 ${target_proxy} 测试失败 (状态码: ${status})，但仍将尝试使用。"
+             # Keep target_proxy set, maybe it works for download but not check_url
+        fi
+    # Check if proxy is disabled
+    elif [ "${proxy_num_arg}" -eq 0 ]; then
+        log "代理已关闭 (--proxy 0), 将直接连接 ${parm1}..."
+        target_proxy=""
+    # Auto-detect proxy if not specified, disabled, or out of range
     else
-        if [ "${proxy_num}" -ne 0 ]; then
-            log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
-            for proxy in "${proxy_arr[@]}"; do
-                status=$(curl -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
-                if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
-                    found=1
-                    target_proxy="${proxy}"
-                    log "将使用${parm1}代理: ${proxy}"
-                    break
-                elif [ "${parm1}" == "Docker" ] && ([ ${status} -eq 200 ] || [ ${status} -eq 301 ]); then
-                    found=1
-                    target_proxy="${proxy}"
-                    log "将使用${parm1}代理: ${proxy}"
-                    break
-                fi
-            done
-
-            if [ ${found} -eq 0 ]; then
-                log "无法连接到${parm1}, 请检查网络。"
-                exit 1
+        log "proxy 未指定或超出范围 (${proxy_num_arg}), 正在检查 ${parm1} 代理可用性..."
+        for proxy in "${proxy_arr[@]}"; do
+            log "测试代理: ${proxy}"
+            status=$(curl --connect-timeout 5 -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+            if [ ${status} -eq 200 ]; then
+                found=1
+                target_proxy="${proxy}"
+                log "将使用 ${parm1} 代理: ${target_proxy}"
+                break
+            else
+                log "代理 ${proxy} 测试失败 (状态码: ${status})"
             fi
-        else
-            log "代理已关闭, 将直接连接${parm1}..."
+        done
+
+        if [ ${found} -eq 0 ]; then
+            log "错误: 无法通过任何代理或直连访问 ${parm1} (${check_url})。"
+            log "请检查网络连接或尝试手动指定有效代理 (--proxy 1-N)。"
+            # Return error instead of exiting, let caller handle it
+            return 1
         fi
     fi
+    return 0 # Return success
 }
 
 
