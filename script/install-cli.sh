@@ -222,7 +222,7 @@ function install_cli_components() {
 
         # Set execute permissions AFTER moving (needs sudo)
         log "设置 ${file_name} 文件权限: ${target_path}..."
-        sudo chmod +x "${target_path}"
+        sudo chmod 755 "${target_path}"
         if [ $? -ne 0 ]; then
             log "设置 ${file_name} 文件执行权限失败: ${target_path}"
             # File is already moved, but permissions failed. Mark as failure.
