@@ -41,7 +41,7 @@ function network_test() {
 
     # Define Github proxy array and check URL
     local proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
-    local check_url="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/tui-cli/napcat" # Updated check URL
+    local check_url="https://raw.githubusercontent.com/lux-QAQ/NapCat-Installer/refs/heads/main/script/install-cli.sh" # Updated check URL
 
     # Check if a specific proxy number is requested and valid
     if [[ "${proxy_num_arg}" =~ ^[1-9][0-9]*$ ]] && [ "${proxy_num_arg}" -le ${#proxy_arr[@]} ]; then
