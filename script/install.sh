@@ -70,7 +70,7 @@ function execute_command() {
 }
 
 function check_sudo() {
-    if ! command -v sudo &>/dev/null; then
+    if ! command -v sudo &> /dev/null; then
         log "sudo不存在, 请手动安装: \n Centos: dnf install -y sudo\n Debian/Ubuntu: apt-get install -y sudo\n"
         exit 1
     fi
@@ -94,9 +94,9 @@ function get_system_arch() {
 }
 
 function detect_package_manager() {
-    if command -v apt-get &>/dev/null; then
+    if command -v apt-get &> /dev/null; then
         package_manager="apt-get"
-    elif command -v dnf &>/dev/null; then
+    elif command -v dnf &> /dev/null; then
         package_manager="dnf"
     else
         log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
@@ -106,9 +106,9 @@ function detect_package_manager() {
 }
 
 function detect_package_installer() {
-    if command -v dpkg &>/dev/null; then
+    if command -v dpkg &> /dev/null; then
         package_installer="dpkg"
-    elif command -v rpm &>/dev/null; then
+    elif command -v rpm &> /dev/null; then
         package_installer="rpm"
     else
         log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
@@ -132,8 +132,8 @@ function network_test() {
     fi
 
     if [ ! -z "${proxy_num}" ] && [ "${proxy_num}" -ge 1 ] && [ "${proxy_num}" -le ${#proxy_arr[@]} ]; then
-        log "手动指定代理: ${proxy_arr[$proxy_num - 1]}"
-        target_proxy="${proxy_arr[$proxy_num - 1]}"
+        log "手动指定代理: ${proxy_arr[$proxy_num-1]}"
+        target_proxy="${proxy_arr[$proxy_num-1]}"
     else
         if [ "${proxy_num}" -ne 0 ]; then
             log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
@@ -168,10 +168,10 @@ function install_dependency() {
 
     if [ "${package_manager}" = "apt-get" ]; then
         execute_command "sudo apt-get update -y -qq" "更新软件包列表"
-        execute_command "sudo apt-get install -y -qq  zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
+        execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
         execute_command "sudo dnf install -y epel-release" "安装epel"
-        execute_command "sudo dnf install --allowerasing -y  zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
     log "更新依赖成功..."
 }
@@ -197,7 +197,7 @@ function clean() {
         sudo rm -f /etc/init.d/napcat
     fi
     if [ -d "${TARGET_FOLDER}/napcat.packet" ]; then
-        sudo rm -rf "${TARGET_FOLDER}/napcat.packet"
+        sudo rm -rf  "${TARGET_FOLDER}/napcat.packet"
     fi
 }
 
@@ -210,7 +210,7 @@ function download_napcat() {
         log "开始下载NapCat安装包,请稍等..."
         network_test "Github"
         napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
-
+        
         curl -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
@@ -240,7 +240,7 @@ function download_napcat() {
     fi
 
     log "正在验证 ${default_file}..."
-    sudo unzip -t "${default_file}" >/dev/null 2>&1
+    sudo unzip -t "${default_file}" > /dev/null 2>&1
     if [ $? -ne 0 ]; then
         log "文件验证失败, 请检查错误。"
         clean
@@ -262,22 +262,22 @@ function get_qq_target_version() {
 
     #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
     #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
-
+    
 }
 
 function compare_linuxqq_versions() {
     local ver1="${1}" #当前版本
     local ver2="${2}" #目标版本
 
-    IFS='.-' read -r -a ver1_parts <<<"${ver1}"
-    IFS='.-' read -r -a ver2_parts <<<"${ver2}"
+    IFS='.-' read -r -a ver1_parts <<< "${ver1}"
+    IFS='.-' read -r -a ver2_parts <<< "${ver2}"
 
     local length=${#ver1_parts[@]}
     if [ ${#ver2_parts[@]} -lt $length ]; then
         length=${#ver2_parts[@]}
     fi
 
-    for ((i = 0; i < length; i++)); do
+    for ((i=0; i<length; i++)); do
         if ((ver1_parts[i] > ver2_parts[i])); then
             force="n"
             return
@@ -296,7 +296,7 @@ function compare_linuxqq_versions() {
     fi
 }
 
-function check_linuxqq() {
+function check_linuxqq(){
     get_qq_target_version
     linuxqq_package_name="linuxqq"
     if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
@@ -313,7 +313,7 @@ function check_linuxqq() {
         install_linuxqq
     else
         if [ "${package_installer}" = "rpm" ]; then
-            if rpm -q ${linuxqq_package_name} &>/dev/null; then
+            if rpm -q ${linuxqq_package_name} &> /dev/null; then
                 linuxqq_installed_version=$(rpm -q --queryformat '%{VERSION}' ${linuxqq_package_name})
                 linuxqq_installed_build=${linuxqq_installed_version##*-}
                 log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
@@ -358,7 +358,7 @@ function check_linuxqq() {
                 install_linuxqq
             fi
         elif [ "${package_installer}" = "dpkg" ]; then
-            if dpkg -l | grep ${linuxqq_package_name} &>/dev/null; then
+            if dpkg -l | grep ${linuxqq_package_name} &> /dev/null; then
                 linuxqq_installed_version=$(dpkg -l | grep "^ii" | grep "linuxqq" | awk '{print $3}')
                 linuxqq_installed_build=${linuxqq_installed_version##*-}
                 log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
@@ -510,11 +510,8 @@ function update_linuxqq_config() {
     for conf in ${confs}; do
         log "正在修改 ${conf}..."
         sudo jq --arg targetVer "${1}" --arg buildId "${2}" \
-            '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${conf}" >"${conf}.tmp" &&
-            sudo mv "${conf}.tmp" "${conf}" || {
-            log "QQ配置更新失败! "
-            exit 1
-        }
+        '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${conf}" > "${conf}.tmp" && \
+        sudo mv "${conf}.tmp" "${conf}" || { log "QQ配置更新失败! "; exit 1; }
     done
     log "更新用户QQ配置成功..."
 }
@@ -534,9 +531,9 @@ function check_napcat() {
     else
         if [ -d "${TARGET_FOLDER}/napcat" ]; then
             napcat_installed_version=$(jq -r '.version' "${TARGET_FOLDER}/napcat/package.json")
-            IFS='.' read -r i1 i2 i3 <<<"${napcat_installed_version}"
-            IFS='.' read -r t1 t2 t3 <<<"${napcat_target_version}"
-            if ((i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3))); then
+            IFS='.' read -r i1 i2 i3 <<< "${napcat_installed_version}"
+            IFS='.' read -r t1 t2 t3 <<< "${napcat_target_version}"
+            if (( i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3) )); then
                 install_napcat
             else
                 log "已安装最新版本, 无需更新。"
@@ -564,7 +561,7 @@ function install_napcat() {
 
     sudo chmod -R 777 "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
-    sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" >/opt/QQ/resources/app/loadNapCat.js
+    sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
         clean
@@ -579,7 +576,7 @@ function install_napcat() {
 function modify_qq_config() {
     log "正在修改QQ启动配置..."
 
-    if sudo jq '.main = "./loadNapCat.js"' /opt/QQ/resources/app/package.json >./package.json.tmp; then
+    if sudo jq '.main = "./loadNapCat.js"' /opt/QQ/resources/app/package.json > ./package.json.tmp; then
         sudo mv ./package.json.tmp /opt/QQ/resources/app/package.json
         echo "修改QQ启动配置成功..."
     else
@@ -658,7 +655,7 @@ function install_napcat_cli() {
 }
 
 function generate_docker_command() {
-    network_test "Docker" >/dev/null 2>&1
+    network_test "Docker" > /dev/null 2>&1
     local qq=${1}
     local mode=${2}
     docker_cmd1="sudo docker run -d -e ACCOUNT=${qq}"
@@ -724,7 +721,7 @@ function get_confirm() {
 }
 
 function docker_install() {
-    if ! command -v docker &>/dev/null; then
+    if ! command -v docker &> /dev/null; then
         detect_package_manager
         if [ "${package_manager}" = "apt-get" ]; then
             execute_command "sudo apt-get update -y -qq" "更新软件包列表"
@@ -761,12 +758,12 @@ function docker_install() {
             read confirm
         fi
         case ${confirm} in
-        y | Y) break ;;
-        *)
-            confirm=""
-            mode=""
-            qq=""
-            ;;
+            y|Y ) break;;
+            * )
+                confirm=""
+                mode=""
+                qq=""
+                ;;
         esac
     done
     eval "${docker_command}"
@@ -838,7 +835,7 @@ function chekc_whiptail() {
         exit 1
     fi
 
-    if ! command -v whiptail &>/dev/null; then
+    if ! command -v whiptail &> /dev/null; then
         log "未发现whiptail, 开始安装..."
         detect_package_manager
 
@@ -857,35 +854,35 @@ function main_tui() {
     while true; do
         choice=$(
             whiptail --title "Napcat Installer" \
-                --menu "\n欢迎使用Napcat安装脚本\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
-                "1" "🐚 shell安装" \
-                "2" "🐋 docker安装" \
-                "3" "🚪 退出" 3>&1 1>&2 2>&3
-        )
+            --menu "\n欢迎使用Napcat安装脚本\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
+            "1" "🐚 shell安装" \
+            "2" "🐋 docker安装" \
+            "3" "🚪 退出" 3>&1 1>&2 2>&3
+            )
 
         case $choice in
-        "1")
-            install_dependency
-            download_napcat
-            check_linuxqq
-            check_napcat
-            check_napcat_cli
-            whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-            show_main_info
-            clean
-            ;;
-        "2")
-            get_qq
-            whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
-            ;;
-        "3")
-            clean
-            exit 0
-            ;;
-        *)
-            clean
-            exit 0
-            ;;
+            "1")
+                install_dependency
+                download_napcat
+                check_linuxqq
+                check_napcat
+                check_napcat_cli
+                whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
+                show_main_info
+                clean
+                ;;
+            "2")
+                get_qq
+                whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
+                ;;
+            "3")
+                clean
+                exit 0
+                ;;
+            *)  
+                clean
+                exit 0
+                ;;
         esac
     done
 }
