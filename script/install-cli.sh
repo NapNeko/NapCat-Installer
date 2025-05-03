@@ -33,44 +33,48 @@ function log() {
 target_proxy="" # Global variable for proxy URL
 
 function network_test() {
-    local parm1="Github" # Only Github needed for CLI install
+    local parm1=${1}
     local found=0
-    local proxy_num_arg=${1:-9} # Get proxy number from argument, default 9 (auto)
+    target_proxy=""
+    proxy_num=${proxy_num:-9}
 
-    # Updated check_url to reflect new path
-    local proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
-    local check_url="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/tui-cli/napcat" # Check one of the files in the new location
-
-    if [[ "${proxy_num_arg}" =~ ^[1-9][0-9]*$ ]] && [ "${proxy_num_arg}" -le ${#proxy_arr[@]} ]; then
-        log "手动指定代理序号: ${proxy_num_arg}"
-        target_proxy="${proxy_arr[$proxy_num_arg - 1]}"
-        log "将使用代理: ${target_proxy}"
-    elif [ "${proxy_num_arg}" -ne 0 ]; then
-        log "proxy 未指定或超出范围 (${proxy_num_arg}), 正在检查代理可用性..."
-        for proxy in "${proxy_arr[@]}"; do
-            log "测试代理: ${proxy}"
-            status=$(curl --connect-timeout 5 -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
-            if [ ${status} -eq 200 ]; then
-                found=1
-                target_proxy="${proxy}"
-                log "将使用代理: ${target_proxy}"
-                break
-            else
-                log "代理 ${proxy} 测试失败 (状态码: ${status})"
-            fi
-        done
-
-        if [ ${found} -eq 0 ]; then
-            log "所有代理均无法连接到 Github, 请检查网络或尝试指定 --proxy 0。"
-            # Don't exit, let the main install_cli function handle failure
-            target_proxy=""
-            return 1
-        fi
-    else
-        log "代理已关闭 (--proxy 0), 将直接连接 Github..."
-        target_proxy=""
+    if [ "${parm1}" == "Github" ]; then
+        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+        check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
+    elif [ "${parm1}" == "Docker" ]; then
+        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "hub.021212.xyz" "docker.registry.cyou")
+        check_url=""
     fi
-    return 0
+
+    if [ ! -z "${proxy_num}" ] && [ "${proxy_num}" -ge 1 ] && [ "${proxy_num}" -le ${#proxy_arr[@]} ]; then
+        log "手动指定代理: ${proxy_arr[$proxy_num - 1]}"
+        target_proxy="${proxy_arr[$proxy_num - 1]}"
+    else
+        if [ "${proxy_num}" -ne 0 ]; then
+            log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
+            for proxy in "${proxy_arr[@]}"; do
+                status=$(curl -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+                if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
+                    found=1
+                    target_proxy="${proxy}"
+                    log "将使用${parm1}代理: ${proxy}"
+                    break
+                elif [ "${parm1}" == "Docker" ] && ([ ${status} -eq 200 ] || [ ${status} -eq 301 ]); then
+                    found=1
+                    target_proxy="${proxy}"
+                    log "将使用${parm1}代理: ${proxy}"
+                    break
+                fi
+            done
+
+            if [ ${found} -eq 0 ]; then
+                log "无法连接到${parm1}, 请检查网络。"
+                exit 1
+            fi
+        else
+            log "代理已关闭, 将直接连接${parm1}..."
+        fi
+    fi
 }
 
 
