@@ -196,7 +196,7 @@ function install_cli_components() {
 
         log "下载 ${file_name} 从 ${download_url}..."
         # Download to the temporary file (no sudo needed for curl)
-        curl -L -# "${download_url}" -o "${temp_file}"
+        curl -k -L -# "${download_url}" -o "${temp_file}"
 
         if [ $? -ne 0 ]; then
             log "${file_name} 文件下载失败, 请检查网络或链接 (${download_url})。"
