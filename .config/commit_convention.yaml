@@ -15,3 +15,4 @@ scopes:
   - readme: README.md 文档
   - install: Napcat-Installer 主脚本
   - todo: 待做事项，或者存在潜在bug的地方
+  - install-cli: TUI-CLI 安装脚本
