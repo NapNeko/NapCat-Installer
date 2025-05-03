@@ -191,45 +191,46 @@ function install_cli_components() {
     # 4. Download and install loop
     for file_name in "${files_to_download[@]}"; do
         local download_url="${target_proxy:+${target_proxy}/}${base_url}/${file_name}"
-        # Use mktemp for secure temporary file in /tmp
-        local temp_file=$(mktemp)
+        local temp_file=$(mktemp) # Create temp file as current user
         local target_path="${target_dir}/${file_name}"
 
         log "下载 ${file_name} 从 ${download_url}..."
-        # Download to the temporary file
-        sudo curl -L -# "${download_url}" -o "${temp_file}"
+        # Download to the temporary file (no sudo needed for curl)
+        curl -L -# "${download_url}" -o "${temp_file}"
 
         if [ $? -ne 0 ]; then
-            log "${file_name} 文件下载失败, 请检查网络或链接。"
-            sudo rm -f "${temp_file}" # Clean up failed download
+            log "${file_name} 文件下载失败, 请检查网络或链接 (${download_url})。"
+            rm -f "${temp_file}" # Clean up failed download (no sudo needed)
             download_failed=true
             continue # Try downloading the next file
         fi
         log "${file_name} 文件下载成功: ${temp_file}"
 
-        log "设置 ${file_name} 文件权限并移动到 ${target_path}..."
-        sudo chmod +x "${temp_file}"
-        if [ $? -ne 0 ]; then
-            log "设置 ${file_name} 文件执行权限失败: ${temp_file}"
-            sudo rm -f "${temp_file}"
-            download_failed=true
-            continue
-        fi
-
-        # Move the file to the target location, overwriting if exists
+        # Move the file to the target location first (needs sudo)
+        log "移动 ${file_name} 文件到 ${target_path}..."
         sudo mv "${temp_file}" "${target_path}"
         if [ $? -ne 0 ]; then
-            log "移动 ${file_name} 文件到 ${target_path} 失败, 请检查权限。"
-            # Attempt to clean up downloaded file if move failed
-            if [ -f "${temp_file}" ]; then # Check if it still exists before removing
-                sudo rm -f "${temp_file}"
+            log "移动 ${file_name} 文件到 ${target_path} 失败, 请检查权限或目标目录。"
+            # Attempt to clean up downloaded file if move failed (no sudo needed)
+            if [ -f "${temp_file}" ]; then # Check if temp file still exists
+                rm -f "${temp_file}"
             fi
             download_failed=true
             continue
-        else
-            log "${file_name} 文件成功移动到 ${target_path}"
         fi
         # temp_file is removed by mv on success
+
+        # Set execute permissions AFTER moving (needs sudo)
+        log "设置 ${file_name} 文件权限: ${target_path}..."
+        sudo chmod +x "${target_path}"
+        if [ $? -ne 0 ]; then
+            log "设置 ${file_name} 文件执行权限失败: ${target_path}"
+            # File is already moved, but permissions failed. Mark as failure.
+            download_failed=true
+            continue
+        else
+            log "${file_name} 文件安装并设置权限成功。"
+        fi
     done
 
     # 5. Final status
