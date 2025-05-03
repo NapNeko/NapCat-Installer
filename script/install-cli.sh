@@ -180,7 +180,7 @@ function install_cli_components() {
 
     # 3. Define files, URLs, and targets
     # Updated base_url
-    local base_url="https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/tui-cli"
+    local base_url="https://raw.githubusercontent.com/lux-QAQ/NapCat-Installer/main/script/tui-cli"
     local target_dir="/usr/local/bin"
     local files_to_download=("napcat" "_napcat_Boot" "_napcat_Config")
     local download_failed=false
