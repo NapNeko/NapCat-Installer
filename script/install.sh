@@ -138,7 +138,7 @@ function network_test() {
         if [ "${proxy_num}" -ne 0 ]; then
             log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
             for proxy in "${proxy_arr[@]}"; do
-                status=$(curl -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+                status=$(curl -k -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
                 if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
                     found=1
                     target_proxy="${proxy}"
@@ -211,7 +211,7 @@ function download_napcat() {
         network_test "Github"
         napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
         
-        curl -L -# "${napcat_download_url}" -o "${default_file}"
+        curl -k -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
             clean
@@ -449,7 +449,7 @@ function install_linuxqq() {
 
     if [ "${package_manager}" = "dnf" ]; then
         if ! [ -f "QQ.rpm" ]; then
-            sudo curl -L -# "${qq_download_url}" -o QQ.rpm
+            sudo curl -k -L -# "${qq_download_url}" -o QQ.rpm
             if [ $? -ne 0 ]; then
                 log "文件下载失败, 请检查错误。"
                 exit 1
@@ -464,7 +464,7 @@ function install_linuxqq() {
         rm -f QQ.rpm
     elif [ "${package_manager}" = "apt-get" ]; then
         if ! [ -f "QQ.deb" ]; then
-            sudo curl -L -# "${qq_download_url}" -o QQ.deb
+            sudo curl -k -L -# "${qq_download_url}" -o QQ.deb
             if [ $? -ne 0 ]; then
                 log "文件下载失败, 请检查错误。"
                 exit 1
@@ -619,7 +619,7 @@ function install_napcat_cli() {
     fi
 
     log "下载外部 TUI-CLI 安装脚本从 ${cli_script_url}..."
-    sudo curl -L -# "${cli_script_url}" -o "${cli_script_local_path}"
+    sudo curl -k -L -# "${cli_script_url}" -o "${cli_script_local_path}"
 
     if [ $? -ne 0 ]; then
         log "错误: TUI-CLI 安装脚本 ${cli_script_name} 下载失败。"
@@ -730,7 +730,7 @@ function docker_install() {
             execute_command "sudo dnf install -y epel-release" "安装epel"
             execute_command "sudo dnf install --allowerasing -y curl" "安装 curl"
         fi
-        execute_command "sudo curl -fsSL https://get.docker.com -o get-docker.sh" "下载docker安装脚本"
+        execute_command "sudo curl -k -fsSL https://get.docker.com -o get-docker.sh" "下载docker安装脚本"
         sudo chmod +x get-docker.sh
         execute_command "sudo sh get-docker.sh" "安装docker"
     else
@@ -819,13 +819,13 @@ function shell_help() {
     echo ""
     echo -e "${YELLOW}使用示例:${NC}"
     echo -e "  ${BLUE}# 使用 TUI 安装:${NC}"
-    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
     echo ""
     echo -e "  ${BLUE}# Docker 安装 (指定 QQ, 模式, 代理, 并跳过确认):${NC}"
-    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
     echo ""
     echo -e "  ${BLUE}# Shell 安装 (不装 TUI-CLI, 不用代理, 强制重装):${NC}"
-    echo -e "  ${CYAN}curl -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
     echo ""
 }
 
