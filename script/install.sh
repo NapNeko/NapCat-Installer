@@ -77,13 +77,13 @@ function check_sudo() {
 }
 
 function check_root() {
-    # Check if the effective user ID is 0 (root)
+    # 检查是否为ID为0的用户
     if [[ $EUID -ne 0 ]]; then
         log "错误: 此脚本需要以 root 权限运行。"
         log "请尝试使用 'sudo bash ${0}' 或切换到 root 用户后运行。"
         exit 1
     fi
-    # Optional: You might still want to log that root privileges are active
+    # 显示当前ROOT用户
     log "脚本正在以 root 权限运行。"
 }
 
