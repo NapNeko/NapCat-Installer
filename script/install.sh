@@ -27,19 +27,35 @@ function log() {
     time=$(date +"%Y-%m-%d %H:%M:%S")
     message="[${time}]: $1 "
     case "$1" in
-        *"失败"*|*"错误"*|*"sudo不存在"*|*"当前用户不是root用户"*|*"无法连接"*)
-            echo -e "${RED}${message}${NC}"
-            ;;
-        *"成功"*)
-            echo -e "${GREEN}${message}${NC}"
-            ;;
-        *"忽略"*|*"跳过"*)
-            echo -e "${YELLOW}${message}${NC}"
-            ;;
-        *)
-            echo -e "${BLUE}${message}${NC}"
-            ;;
+    *"失败"* | *"错误"* | *"sudo不存在"* | *"当前用户不是root用户"* | *"无法连接"*)
+        echo -e "${RED}${message}${NC}"
+        ;;
+    *"成功"*)
+        echo -e "${GREEN}${message}${NC}"
+        ;;
+    *"忽略"* | *"跳过"* | *"默认"*)
+        echo -e "${YELLOW}${message}${NC}"
+        ;;
+    *)
+        echo -e "${BLUE}${message}${NC}"
+        ;;
     esac
+}
+
+function print_introduction() {
+    echo -e "${BLUE}下面是 NapCat 安装脚本的功能简介！${NC}😋"
+    echo -e "${BLUE}--------------------------------------------------${NC}"
+    echo -e "${BLUE}接下来，您可以选择安装方式:${NC}"
+    echo -e "  1. ${GREEN}Docker 安装${NC}: ${BLUE}通过容器运行。${NC}"
+    echo -e "  2. ${GREEN}本地安装${NC}: ${BLUE}直接在本系统执行安装。分为下面两种：${NC}(${YELLOW}默认${NC})${NC}"
+	echo -e "  	 - ${GREEN}可视化安装${NC}: ${BLUE}通过交互式界面来引导你安装。${NC}"
+    echo -e "  	 - ${GREEN}Shell 安装${NC}: ${BLUE}直接在当前Shell会话执行安装。${NC}(${YELLOW}默认${NC})${NC}"
+    echo ""
+    echo -e "${BLUE}您可以选择安装的组件方式:${NC}"
+    echo -e "  - ${CYAN}NapCat TUI-CLI${NC}: ${BLUE}允许你在 ssh、没有桌面、WebUI 难以使用的情况下可视化交互配置 Napcat${NC}"
+	echo ""
+    echo -e "${BLUE}使用 --help 来获取更多功能介绍${NC}"
+    echo -e "${BLUE}--------------------------------------------------${NC}"
 }
 
 function execute_command() {
@@ -61,11 +77,14 @@ function check_sudo() {
 }
 
 function check_root() {
-    sudo_id_output=$(sudo whoami)
-    if [[ ! ${sudo_id_output} == "root" ]]; then
-        log "当前用户不是root用户, 请将此用户加入sudo group后再试。"
+    # 检查是否为ID为0的用户
+    if [[ $EUID -ne 0 ]]; then
+        log "错误: 此脚本需要以 root 权限运行。"
+        log "请尝试使用 'sudo bash ${0}' 或切换到 root 用户后运行。"
         exit 1
     fi
+    # 显示当前ROOT用户
+    log "脚本正在以 root 权限运行。"
 }
 
 function get_system_arch() {
@@ -122,7 +141,7 @@ function network_test() {
         if [ "${proxy_num}" -ne 0 ]; then
             log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
             for proxy in "${proxy_arr[@]}"; do
-                status=$(curl -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+                status=$(curl -k -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
                 if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
                     found=1
                     target_proxy="${proxy}"
@@ -145,7 +164,7 @@ function network_test() {
         fi
     fi
 }
-
+# 似乎是适配的系统较少
 function install_dependency() {
     log "开始更新依赖..."
     detect_package_manager
@@ -195,7 +214,7 @@ function download_napcat() {
         network_test "Github"
         napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
         
-        curl -L -# "${napcat_download_url}" -o "${default_file}"
+        curl -k -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
             clean
@@ -433,7 +452,7 @@ function install_linuxqq() {
 
     if [ "${package_manager}" = "dnf" ]; then
         if ! [ -f "QQ.rpm" ]; then
-            sudo curl -L -# "${qq_download_url}" -o QQ.rpm
+            sudo curl -k -L -# "${qq_download_url}" -o QQ.rpm
             if [ $? -ne 0 ]; then
                 log "文件下载失败, 请检查错误。"
                 exit 1
@@ -448,7 +467,7 @@ function install_linuxqq() {
         rm -f QQ.rpm
     elif [ "${package_manager}" = "apt-get" ]; then
         if ! [ -f "QQ.deb" ]; then
-            sudo curl -L -# "${qq_download_url}" -o QQ.deb
+            sudo curl -k -L -# "${qq_download_url}" -o QQ.deb
             if [ $? -ne 0 ]; then
                 log "文件下载失败, 请检查错误。"
                 exit 1
@@ -569,89 +588,73 @@ function modify_qq_config() {
     fi
 }
 
+# 当use_cli为y时, 检测是否安装过napcat-cli。
 function check_napcat_cli() {
-    if [ "${use_tui}" = "y" ]; then
-        install_cli=$(whiptail --title "Napcat Installer" --yesno "是否安装cli" 15 50 3>&1 1>&2 2>&3)
-        if [ $? -eq 0 ]; then
-            use_cli="y"
-        else
-            use_cli="n"
-        fi
-    elif [ -z ${use_cli} ]; then
-        log "是否安装cli, 10s超时跳过安装(y/n)"
-        read -t 10 -r use_cli
-        if [[ $? -ne 0 ]]; then
-            log "超时未输入, 跳过安装CLI"
-            use_cli="n"
-        elif [[ "${use_cli}" =~ ^[Yy]?$ ]]; then
-            use_cli="y"
-        elif [[ "${use_cli}" == "n" ]]; then
-            log "跳过安装CLI"
-            use_cli="n"
-        else
-            log "输入错误, 跳过安装CLI"
-        fi
-    fi
-
     if [ "${use_cli}" = "y" ]; then
-        install_napcat_cli
-    elif [ "${use_cli}" = "n" ]; then
         if [ -f "/usr/local/bin/napcat" ]; then
-            log "检测到已安装CLI, 开始更新..." 
+            log "检测到已安装的 TUI-CLI, 开始更新..."
             install_napcat_cli
-            log "CLI更新成功。"
-            use_cli="y"
+            log "TUI-CLI 更新成功。"
         else
-            log "跳过安装CLI。"
+            log "开始安装 TUI-CLI..."
+            install_napcat_cli
+            log "TUI-CLI 安装成功。"
         fi
+    else
+        log "跳过安装/更新 TUI-CLI (用户未选择或使用 --cli n)。"
     fi
 }
 
+# TODO:TUI
 function install_napcat_cli() {
-    log "安装NapCatQQ CLI..."   
-    network_test "Github"
-    napcat_cli_download_url="${target_proxy:+${target_proxy}/}https://raw.githubusercontent.com/NapNeko/NapCat-Installer/refs/heads/main/script/napcat"
-    default_file="napcatcli"
-    log "NapCatQQ CLI 下载链接: ${napcat_cli_download_url}"
-    sudo curl -L -# "${napcat_cli_download_url}" -o "./${default_file}"
+    local cli_script_url_base="https://raw.githubusercontent.com/NapNeko/NapCat-TUI-CLI/main/script"
+    local cli_script_name="install-cli.sh"
+    local cli_script_local_path="./${cli_script_name}.download" # Download to a temporary name
+    local cli_script_url="${target_proxy:+${target_proxy}/}${cli_script_url_base}/${cli_script_name}"
+    local exit_status=1 # Default to failure
+
+    # Ensure network test has run for Github to potentially set target_proxy
+    # If network_test hasn't run, run it now.
+    if [ -z "${target_proxy+x}" ]; then # Check if target_proxy is set at all
+        log "运行 TUI-CLI 安装的网络测试..."
+        network_test "Github"
+        # Allow continuing even if network_test fails, curl might still work without proxy
+    fi
+
+    log "下载外部 TUI-CLI 安装脚本从 ${cli_script_url}..."
+    sudo curl -k -L -# "${cli_script_url}" -o "${cli_script_local_path}"
 
     if [ $? -ne 0 ]; then
-        log "文件下载失败, 请检查错误。"
-        clean
-        exit 1
+        log "错误: TUI-CLI 安装脚本 ${cli_script_name} 下载失败。"
+        sudo rm -f "${cli_script_local_path}" # Clean up potentially partial download
+        return 1 # Indicate failure
     fi
 
-    if [ -f "./${default_file}" ]; then
-        log "${default_file} 成功下载。"
-    else
-        ext_file=$(basename "${napcat_cli_download_url}")
-        if [ -f "${ext_file}" ]; then
-            mv "${ext_file}" "./${default_file}"
-            if [ $? -ne 0 ]; then
-                log "文件更名失败, 请检查错误。"
-                clean
-                exit 1
-            else
-                log "${default_file} 成功重命名。"
-            fi
-        else
-            log "文件下载失败, 请检查错误。"
-            clean
-            exit 1
-        fi
+    log "设置 TUI-CLI 安装脚本权限..."
+    sudo chmod +x "${cli_script_local_path}"
+    if [ $? -ne 0 ]; then
+        log "错误: 设置 TUI-CLI 安装脚本 (${cli_script_local_path}) 执行权限失败。"
+        sudo rm -f "${cli_script_local_path}"
+        return 1 # Indicate failure
     fi
 
-    log "正在移动文件..."
-    sudo cp -f ./${default_file} /usr/local/bin/napcat
-    if [ $? -ne 0 -a $? -ne 1 ]; then
-        log "文件移动失败, 请以root身份运行。"
-        clean
-        exit 1
+    log "执行外部 TUI-CLI 安装脚本 (${cli_script_local_path})..."
+    # Pass the proxy number argument (use 9 for auto if not set)
+    sudo "${cli_script_local_path}" "${proxy_num_arg:-9}"
+
+    exit_status=$? # Capture the exit status of the external script
+    if [ ${exit_status} -ne 0 ]; then
+         log "外部 TUI-CLI 安装脚本执行失败 (退出码: ${exit_status})。"
+         # Decide if this should be a fatal error for the main script
+         # return 1
     else
-        log "移动文件成功"
+         log "外部 TUI-CLI 安装脚本执行成功。"
     fi
-    sudo chmod +x /usr/local/bin/napcat
-    rm -rf ./${default_file}
+
+    log "清理 TUI-CLI 安装脚本 (${cli_script_local_path})..."
+    sudo rm -f "${cli_script_local_path}"
+
+    return ${exit_status} # Return the exit status of the external script
 }
 
 function generate_docker_command() {
@@ -730,7 +733,7 @@ function docker_install() {
             execute_command "sudo dnf install -y epel-release" "安装epel"
             execute_command "sudo dnf install --allowerasing -y curl" "安装 curl"
         fi
-        execute_command "sudo curl -fsSL https://get.docker.com -o get-docker.sh" "下载docker安装脚本"
+        execute_command "sudo curl -k -fsSL https://get.docker.com -o get-docker.sh" "下载docker安装脚本"
         sudo chmod +x get-docker.sh
         execute_command "sudo sh get-docker.sh" "安装docker"
     else
@@ -775,55 +778,58 @@ function docker_install() {
 }
 
 function show_main_info() {
-    log "\n安装完成。"
+    log "\n---------------- Shell 安装完成 ----------------"
     log ""
-    log "输入 xvfb-run -a qq --no-sandbox 命令启动。"
-    log "保持后台运行 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\" "
-    log "后台快速登录 请输入 screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\" "
-    log "Napcat安装位置 ${TARGET_FOLDER}/napcat"
-    log "WEBUI_TOKEN 请自行查看${TARGET_FOLDER}/napcat/config/webui.json文件获取"
-    log "注意, 您可以随时使用 screen -r napcat 来进入后台进程并使用 ctrl + a + d 离开(离开不会关闭后台进程)。"
-    log "停止后台运行 请输入 screen -S napcat -X quit"
+    log "${GREEN}启动 Napcat (需要图形环境或 Xvfb):${NC}"
+    log "  ${CYAN}sudo xvfb-run -a qq --no-sandbox${NC}"
+    log ""
+    log "${GREEN}后台运行 Napcat (使用 screen)(请使用 root 账户):${NC}"
+    log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\"${NC}"
+    log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"${NC}"
+    log "  附加到会话: ${CYAN}screen -r napcat${NC} (按 Ctrl+A 然后按 D 分离)"
+    log "  停止会话: ${CYAN}screen -S napcat -X quit${NC}"
+    log ""
+    log "${GREEN}Napcat 相关信息:${NC}"
+    log "  安装位置: ${TARGET_FOLDER}/napcat"
+    log "  WebUI Token: 查看 ${TARGET_FOLDER}/napcat/config/webui.json 文件获取"
+    log ""
     if [ "${use_cli}" = "y" ]; then
         show_cli_info
+    else
+        log "${YELLOW}未安装 TUI-CLI 工具。如需使用便捷命令管理, 请重新运行安装脚本并选择安装 TUI-CLI (--cli y)。${NC}"
     fi
+    log "--------------------------------------------------"
 }
-
+# TODO：TUI
 function show_cli_info() {
-    log "\n新方法(未安装cli请忽略): "
-    log "输入 napcat help  获取帮助。"
-    log "后台快速登录 请输入 napcat start QQ账号 "
-    log "建议非root用户使用sudo执行命令以防止出现一些奇奇怪怪的bug, 例如 sudo napcat help"
+    log "${GREEN}TUI-CLI 工具用法 (napcat):${NC}"
+    log "  启动: ${CYAN}sudo napcat${NC}"
 }
 
 function shell_help() {
-    help_content="命令选项(高级用法)
-    您可以在 原安装命令 后面添加以下参数
-
-    0. --tui: 使用tui可视化交互安装
-
-    1. --docker [y/n]: --docker y 为使用docker安装反之为shell安装
-
-    2. --qq \"123456789\": 传入docker安装时的QQ号
-
-    3. --mode [ws|reverse_ws|reverse_http]: 传入docker安装时的运行模式
-
-    4. --confirm: 传入docker安装时的是否确认执行安装
-
-    5. --proxy [0|1|2|3|4|5|6]: 传入代理, 0为不使用代理, 1为使用内置的第一个,不支持自定义, docker安装可选0-7, shell安装可选0-5
-
-    6. --cli [y/n]: shell安装时是否安装cli
-
-    7. --force: 传入则执行shell强制重装
-
-    使用示例: 
-    0.  使用tui使用tui可视化交互安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
-    1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
-    2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force"
-    echo "${help_content}"
+    # Use print_introduction for general info, keep this for specific args
+    echo -e "${YELLOW}命令选项 (高级用法):${NC}"
+    echo "您可以在 原安装命令 后面添加以下参数:"
+    echo ""
+    echo -e "  ${CYAN}--tui${NC}                     使用 TUI 可视化交互安装"
+    echo -e "  ${CYAN}--docker${NC} [${GREEN}y${NC}/${RED}n${NC}]            选择安装方式 (${GREEN}y${NC}: Docker, ${RED}n${NC}: Shell)"
+    echo -e "  ${CYAN}--cli${NC} [${GREEN}y${NC}/${RED}n${NC}]               (Shell安装时) 是否安装 TUI-CLI 工具 (${YELLOW}推荐${NC})(允许你在ssh、没有桌面、WebUI难以使用的情况下${YELLOW}可视化交互${NC}配置Napcat)"
+    echo -e "  ${CYAN}--force${NC}                   (Shell安装时) 强制重装 LinuxQQ 和 NapCat"
+    echo -e "  ${CYAN}--proxy${NC} [${BLUE}0-n${NC}]             指定下载代理序号 (${BLUE}0${NC}: 不使用, ${BLUE}1-n${NC}: 内置列表)"
+    echo -e "  ${CYAN}--qq${NC} \"<号码>\"             (Docker安装时) 指定 QQ 号码"
+    echo -e "  ${CYAN}--mode${NC} [${BLUE}ws${NC}|${BLUE}reverse_ws${NC}|...] (Docker安装时) 指定运行模式"
+    echo -e "  ${CYAN}--confirm${NC} [${GREEN}y${NC}]             (Docker安装时) 跳过最终确认直接执行"
+    echo ""
+    echo -e "${YELLOW}使用示例:${NC}"
+    echo -e "  ${BLUE}# 使用 TUI 安装:${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
+    echo ""
+    echo -e "  ${BLUE}# Docker 安装 (指定 QQ, 模式, 代理, 并跳过确认):${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
+    echo ""
+    echo -e "  ${BLUE}# Shell 安装 (不装 TUI-CLI, 不用代理, 强制重装):${NC}"
+    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
+    echo ""
 }
 
 function chekc_whiptail() {
@@ -884,88 +890,158 @@ function main_tui() {
     done
 }
 
-while [[ $# -ge 1 ]]; do
+# --- 脚本主逻辑开始 ---
+
+# 1. 分析参数
+while [[ $# -gt 0 ]]; do
     case $1 in
-        --tui)
-            shift
-            use_tui="y"
-            shift
-            ;;
-        --docker)
-            shift
-            use_docker="$1"
-            shift
-            ;;
-        --qq)
-            shift
-            qq="$1"
-            shift
-            ;;
-        --mode)
-            shift
-            mode="$1"
-            shift
-            ;;
-        --confirm)
-            shift
+    --tui)
+        use_tui="y"
+        shift # 消耗参数名
+        ;;
+    --docker)
+        use_docker="$2"
+        shift # 消耗参数名
+        shift # 消耗参数值
+        ;;
+    --qq)
+        qq="$2"
+        shift # 消耗参数名
+        shift # 消耗参数值
+        ;;
+    --mode)
+        mode="$2"
+        shift # 消耗参数名
+        shift # 消耗参数值
+        ;;
+    --confirm)
+        # Allow --confirm or --confirm y
+        if [[ "$2" =~ ^[Yy]$ ]] || [[ $# -eq 1 ]]; then
             confirm="y"
-            shift
-            ;;
-        --force)
-            shift
-            force="y"
-            shift
-            ;;
-        --proxy)
-            shift
-            proxy_num="$1"
-            shift
-            ;;
-        --cli)
-            shift
-            use_cli="$1"
-            shift
-            ;;
-        *)
-            shell_help
-            exit 1;
-            ;;
+            shift # 消耗参数名
+            # Check if there was a value and shift it
+            if [[ "$2" =~ ^[Yy]$ ]]; then
+                shift # 消耗多余的参数值
+            fi
+        else
+            # Handle cases like --confirm n or invalid value
+            confirm="n" # Explicitly set to no if value is not 'y'
+            shift       # 消耗参数名
+            shift       # 消耗参数值
+        fi
+        ;;
+    --force)
+        force="y"
+        shift # 消耗参数名。!!旧的脚本这里似乎有问题!!
+        ;;
+    --proxy)
+        proxy_num_arg="$2" # 保存代理序号
+        shift              # 消耗参数名
+        shift              # 消耗参数值
+        ;;
+    --cli)
+        use_cli="$2"
+        shift # 消耗参数名
+        shift # 消耗参数值
+        ;;
+    --help | -h)
+        logo
+        #print_introduction
+        shell_help
+        exit 0
+        ;;
+    *)
+        echo "未知参数: $1"
+        shell_help
+        exit 1
+        ;;
     esac
 done
 
+# 2. 初始化
 clear
 logo
+print_introduction
 check_sudo
 check_root
 
+# 3. 首先处理TUI安装
 if [ "${use_tui}" = "y" ]; then
-    main_tui
-elif [ -z ${use_docker} ]; then
-    log "是否使用shell安装, 10s超时使用shell安装(y/n)"
-    read -t 10 -r use_shell
+    main_tui # 调用TUI安装函数
+    exit $?  # 退出TUI安装函数的状态码
+fi
+
+# 4. 非TUI模式，处理没有被设置的arg
+
+# 询问DOCKER
+if [ -z "${use_docker}" ]; then
+    log "选择安装方式: Docker (容器化) 或 Shell (直接安装)?"
+    log "输入 'y' 使用 Docker, 输入 'n' 使用 Shell。"
+    read -t 10 -p "[y/N] (10秒后默认 N): " use_docker_input
+    echo "" # Newline after read
+
     if [[ $? -ne 0 ]]; then
-        log "超时未输入, 默认使用shell安装"
+        log "超时未输入, 默认使用 Shell 安装。"
         use_docker="n"
-    elif [[ "${use_shell}" =~ ^[Yy]?$ ]]; then
-        use_docker="n"
-    elif [[ "${use_shell}" == "n" ]]; then
+    elif [[ "${use_docker_input}" =~ ^[Yy]$ ]]; then
+        log "选择使用 Docker 安装。"
         use_docker="y"
+    elif [[ "${use_docker_input}" =~ ^[Nn]$ ]] || [ -z "${use_docker_input}" ]; then
+        log "选择使用 Shell 安装。"
+        use_docker="n"
     else
-        log "输入错误"
-        exit 1
+        log "输入无效 ('${use_docker_input}'), 默认使用 Shell 安装。"
+        use_docker="n"
     fi
 fi
 
+# 询问CLI
+if [ "${use_docker}" = "n" ] && [ -z "${use_cli}" ]; then
+    log "是否安装 NapCat TUI-CLI (命令行工具)?"
+    log "输入 'y' 安装, 输入 'n' 跳过。"
+    read -t 10 -p "[y/N] (10秒后默认 N): " use_cli_input # 默认不安装
+    echo ""
+
+    if [[ $? -ne 0 ]]; then
+        log "超时未输入, 默认不安装 CLI。"
+        use_cli="n"                               # 默认不安装
+    elif [[ "${use_cli_input}" =~ ^[Yy]$ ]]; then # 只有 y 或 Y 才安装
+        log "选择安装 CLI。"
+        use_cli="y"
+    # elif [[ "${use_cli_input}" =~ ^[Nn]$ ]] || [ -z "${use_cli_input}" ]; then # Explicit 'n' or empty defaults to no
+    #     log "选择不安装 CLI。"
+    #     use_cli="n"
+    else # 其他情况
+        log "选择或超时默认为不安装 CLI。"
+        use_cli="n"
+    fi
+fi
+
+# 5. 执行安装
+
 if [ "${use_docker}" = "y" ]; then
+    # Docker install needs qq, mode, confirm. Call docker_install which handles getting these if needed.
     docker_install
-    exit 0
+    exit_status=$?
+    if [ ${exit_status} -eq 0 ]; then
+        log "Docker 安装流程完成。"
+    else
+        log "Docker 安装流程失败。"
+    fi
+    exit ${exit_status}
 elif [ "${use_docker}" = "n" ]; then
+    log "开始 Shell 安装流程..."
     install_dependency
     download_napcat
-    check_linuxqq
-    check_napcat
-    check_napcat_cli
+    check_linuxqq    # Uses 'force' variable if set by args
+    check_napcat     # Uses 'force' variable if set by args
+    check_napcat_cli # Uses 'use_cli' variable determined above or by args
     show_main_info
     clean
+    log "Shell 安装流程完成。"
     exit 0
+else
+    # This case should not be reached if logic above is correct
+    log "错误: 无效的安装选项 (use_docker=${use_docker})。"
+    exit 1
 fi

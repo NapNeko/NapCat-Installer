@@ -1,2 +1,4 @@
 .venv
+.history/*
 napcat
+test/*
