@@ -260,8 +260,8 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    #固定 3.2.16-34606
-    linuxqq_target_version="3.2.17-34606"
+    #固定 3.2.17-34740
+    linuxqq_target_version="3.2.17-34740"
 
     #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
     #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
