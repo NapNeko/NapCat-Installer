@@ -33,7 +33,7 @@ function log() {
     *"成功"*)
         echo -e "${GREEN}${message}${NC}"
         ;;
-    *"忽略"* | *"跳过"* | *"默认"*)
+    *"忽略"* | *"跳过"* | *"默认"* | *"警告"*)
         echo -e "${YELLOW}${message}${NC}"
         ;;
     *)
@@ -302,9 +302,17 @@ function compare_linuxqq_versions() {
 function check_linuxqq(){
     get_qq_target_version
     linuxqq_package_name="linuxqq"
+    local qq_package_json_path="/opt/QQ/resources/app/package.json" # Path to QQ's package.json
+
     if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
         log "无法获取目标QQ版本, 请检查错误。"
         exit 1
+    fi
+
+    if ! [ -f "${qq_package_json_path}" ]; then
+        log "警告: LinuxQQ 的核心配置文件 (${qq_package_json_path}) 未找到。可能安装不完整或已损坏。"
+        log "将触发 LinuxQQ 的安装/重装流程。"
+        force="y"
     fi
 
     linuxqq_target_build=${linuxqq_target_version##*-}
@@ -313,6 +321,29 @@ function check_linuxqq(){
     log "最低linuxQQ版本: ${linuxqq_target_version}, 构建: ${linuxqq_target_build}"
     if [ "${force}" = "y" ]; then
         log "强制重装模式..."
+        local qq_is_installed=false
+        if [ "${package_installer}" = "rpm" ]; then
+            if rpm -q ${linuxqq_package_name} &> /dev/null; then
+                qq_is_installed=true
+            fi
+        elif [ "${package_installer}" = "dpkg" ]; then
+            if dpkg -l | grep -q "^ii.*${linuxqq_package_name}"; then # More precise check
+                qq_is_installed=true
+            fi
+        fi
+
+        if [ "${qq_is_installed}" = true ]; then
+            log "检测到已安装的 LinuxQQ，将卸载旧版本以进行重装..."
+            if [ "${package_manager}" = "dnf" ]; then
+                execute_command "sudo dnf remove -y ${linuxqq_package_name}" "卸载旧版QQ (dnf)"
+            elif [ "${package_manager}" = "apt-get" ]; then
+                # Using --purge to remove configuration files as well for a cleaner reinstall
+                execute_command "sudo apt-get remove --purge -y -qq ${linuxqq_package_name}" "卸载并清除旧版QQ (apt)"
+                execute_command "sudo apt-get autoremove -y -qq" "清理旧版QQ残留依赖 (apt)"
+            fi
+        else
+            log "未检测到已安装的 LinuxQQ，将进行全新安装。"
+        fi
         install_linuxqq
     else
         if [ "${package_installer}" = "rpm" ]; then
