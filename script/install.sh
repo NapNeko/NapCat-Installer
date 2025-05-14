@@ -130,7 +130,7 @@ function network_test() {
         proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
-        proxy_arr=("docker.1panel.dev" "dockerpull.com" "dockerproxy.cn" "docker.agsvpt.work" "hub.021212.xyz" "docker.registry.cyou")
+        proxy_arr=("swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io" "docker.1ms.run")
         check_url=""
     fi
 
