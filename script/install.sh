@@ -131,7 +131,7 @@ function network_test() {
     log "开始网络测试: ${parm1}..."
 
     if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghfast.top"  "https://gh.wuliya.xin" "https://gh-proxy.com")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
