@@ -123,15 +123,24 @@ function detect_package_installer() {
 function network_test() {
     local parm1=${1}
     local found=0
+    local timeout=10  # 设置超时秒数
+    local status=0
     target_proxy=""
     proxy_num=${proxy_num:-9}
+
+    log "开始网络测试: ${parm1}..."
 
     if [ "${parm1}" == "Github" ]; then
         proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
-        proxy_arr=("swr.cn-north-4.myhuaweicloud.com/ddn-k8s/docker.io" "docker.1ms.run")
+        proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
         check_url=""
+    else
+        log "错误: 未知的网络测试目标 '${parm1}', 默认测试 Github"
+        parm1="Github"
+        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+        check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     fi
 
     if [ ! -z "${proxy_num}" ] && [ "${proxy_num}" -ge 1 ] && [ "${proxy_num}" -le ${#proxy_arr[@]} ]; then
@@ -141,7 +150,17 @@ function network_test() {
         if [ "${proxy_num}" -ne 0 ]; then
             log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
             for proxy in "${proxy_arr[@]}"; do
-                status=$(curl -k -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+                log "测试代理: ${proxy}"
+                # 添加超时参数 --connect-timeout 和 --max-time
+                status=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
+                curl_exit=$?
+
+                # 检查curl是否超时或失败
+                if [ $curl_exit -ne 0 ]; then
+                    log "代理 ${proxy} 测试失败或超时 (错误码: $curl_exit)"
+                    continue
+                fi
+
                 if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
                     found=1
                     target_proxy="${proxy}"
@@ -156,14 +175,21 @@ function network_test() {
             done
 
             if [ ${found} -eq 0 ]; then
-                log "无法连接到${parm1}, 请检查网络。"
-                exit 1
+                log "警告: 无法找到可用的${parm1}代理，将尝试直连..."
+                # 尝试直连，看是否能访问
+                status=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}" "${check_url}")
+                if [ $? -eq 0 ] && [ ${status} -eq 200 ]; then
+                    log "直连${parm1}成功，将不使用代理"
+                else
+                    log "警告: 无法连接到${parm1}，请检查网络。将继续尝试安装，但可能会失败。"
+                fi
             fi
         else
             log "代理已关闭, 将直接连接${parm1}..."
         fi
     fi
 }
+
 # 似乎是适配的系统较少
 function install_dependency() {
     log "开始更新依赖..."
@@ -658,22 +684,32 @@ function install_napcat_cli() {
 }
 
 function generate_docker_command() {
-    network_test "Docker" > /dev/null 2>&1
     local qq=${1}
     local mode=${2}
+
+    # 检查模式是否有效
+    if [[ "${mode}" != "ws" && "${mode}" != "reverse_ws" && "${mode}" != "reverse_http" ]]; then
+        log "错误: 无效的运行模式 '${mode}', 请选择 ws, reverse_ws 或 reverse_http"
+        return 1
+    fi
+
     docker_cmd1="sudo docker run -d -e ACCOUNT=${qq}"
     docker_cmd2="--name napcat --restart=always ${target_proxy:+${target_proxy}/}mlikiowa/napcat-docker:latest"
     docker_ws="${docker_cmd1} -e WS_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -p 3001:3001 -p 6099:6099 ${docker_cmd2}"
-    docker_reverse_ws="${docker_cmd1} -e WSR_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -e WS_URLS='[]' -p 6099:6099 ${docker_cmd2}"
-    docker_reverse_http="${docker_cmd1} -e HTTP_ENABLE=true  -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -e HTTP_POST_ENABLE=true -e HTTP_URLS='[]' -p 3000:3000 -p 6099:6099 ${docker_cmd2}"
+    docker_reverse_ws="${docker_cmd1} -e WSR_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -p 6099:6099 ${docker_cmd2}"
+    docker_reverse_http="${docker_cmd1} -e HTTP_ENABLE=true -e NAPCAT_GID=$(id -g) -e NAPCAT_UID=$(id -u) -p 3000:3000 -p 6099:6099 ${docker_cmd2}"
+
     if [ "${mode}" = "ws" ]; then
         echo "${docker_ws}"
+        return 0
     elif [ "${mode}" = "reverse_ws" ]; then
         echo "${docker_reverse_ws}"
+        return 0
     elif [ "${mode}" = "reverse_http" ]; then
         echo "${docker_reverse_http}"
+        return 0
     else
-        exit 1
+        return 1
     fi
 }
 
@@ -744,22 +780,43 @@ function docker_install() {
         if [[ -z ${qq} ]]; then
             log "请输入QQ号: "
             read -r qq
+            if [[ -z ${qq} ]]; then
+                log "QQ号不能为空，请重新输入。"
+                continue
+            fi
         fi
+
         if [[ -z ${mode} ]]; then
-            log "请选择模式 (ws/reverse_ws/reverse_http) "
+            log "请选择模式 (ws/reverse_ws/reverse_http): "
             read -r mode
+            # 验证模式输入是否正确
+            if [[ "${mode}" != "ws" && "${mode}" != "reverse_ws" && "${mode}" != "reverse_http" ]]; then
+                log "错误: 无效的运行模式 '${mode}', 请选择 ws, reverse_ws 或 reverse_http"
+                mode="" # 清空无效的模式，重新询问
+                continue
+            fi
         fi
+
+        log "生成Docker命令..."
+        network_test "Docker"
         docker_command=$(generate_docker_command "${qq}" "${mode}")
-        if [[ -z ${docker_command} ]]; then
-            log "模式错误, 无法生成命令"
+        cmd_status=$?
+
+        if [[ $cmd_status -ne 0 || -z ${docker_command} ]]; then
+            log "模式错误或命令生成失败, 无法生成命令"
+            mode=""
             confirm="n"
+            continue
         else
-            log "即将执行以下命令: ${docker_command}\n"
+            log "即将执行以下命令: "
+            log "${docker_command}"
         fi
+
         if [[ -z ${confirm} ]]; then
             log "是否继续? (y/n) "
-            read confirm
+            read -r confirm
         fi
+
         case ${confirm} in
             y|Y ) break;;
             * )
@@ -769,6 +826,8 @@ function docker_install() {
                 ;;
         esac
     done
+
+    log "执行Docker命令..."
     eval "${docker_command}"
     if [ $? -ne 0 ]; then
         log "Docker启动失败, 请检查错误。"
