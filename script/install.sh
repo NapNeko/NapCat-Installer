@@ -302,17 +302,21 @@ function compare_linuxqq_versions() {
 function check_linuxqq(){
     get_qq_target_version
     linuxqq_package_name="linuxqq"
-    local qq_package_json_path="/opt/QQ/resources/app/package.json" # Path to QQ's package.json
+    local qq_package_json_path="/opt/QQ/resources/app/package.json" # QQ包json路径
+    local napcat_config_path="/opt/QQ/resources/app/app_launcher/napcat/config" # Napcat config
+    local backup_path="/tmp/napcat_config_backup_$(date +%s)" # 备份文件夹路径
 
     if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
         log "无法获取目标QQ版本, 请检查错误。"
         exit 1
     fi
 
+    local package_json_exists=true
     if ! [ -f "${qq_package_json_path}" ]; then
         log "警告: LinuxQQ 的核心配置文件 (${qq_package_json_path}) 未找到。可能安装不完整或已损坏。"
         log "将触发 LinuxQQ 的安装/重装流程。"
-        force="y"
+        force="y" #  package.json 丢失则强制重装
+        package_json_exists=false
     fi
 
     linuxqq_target_build=${linuxqq_target_version##*-}
@@ -322,6 +326,30 @@ function check_linuxqq(){
     if [ "${force}" = "y" ]; then
         log "强制重装模式..."
         local qq_is_installed=false
+        local backup_created=false
+
+        # --- 备份 ---
+        if [ -d "${napcat_config_path}" ]; then
+            log "检测到现有 Napcat 配置 (${napcat_config_path}), 准备备份..."
+            if sudo mkdir -p "${backup_path}"; then
+                log "创建备份目录: ${backup_path}"
+                if sudo cp -a "${napcat_config_path}/." "${backup_path}/"; then
+                    log "Napcat 配置备份成功到 ${backup_path}"
+                    backup_created=true
+                else
+                    log "警告: Napcat 配置备份失败 (从 ${napcat_config_path} 到 ${backup_path})。将继续重装，但配置可能丢失。"
+                    # 清理备份的临时目录
+                    sudo rm -rf "${backup_path}"
+                fi
+            else
+                log "严重警告: 无法创建备份目录 ${backup_path}。将继续重装，但配置可能丢失。"
+            fi
+        else
+            log "警告: 未找到现有 Napcat 配置目录 (${napcat_config_path}), 您之前的配置无法找到。"
+        fi
+        # --- 完成备份 ---
+
+        # package manager
         if [ "${package_installer}" = "rpm" ]; then
             if rpm -q ${linuxqq_package_name} &> /dev/null; then
                 qq_is_installed=true
@@ -332,19 +360,51 @@ function check_linuxqq(){
             fi
         fi
 
+        # --- 卸载 ---
         if [ "${qq_is_installed}" = true ]; then
             log "检测到已安装的 LinuxQQ，将卸载旧版本以进行重装..."
             if [ "${package_manager}" = "dnf" ]; then
                 execute_command "sudo dnf remove -y ${linuxqq_package_name}" "卸载旧版QQ (dnf)"
             elif [ "${package_manager}" = "apt-get" ]; then
-                # Using --purge to remove configuration files as well for a cleaner reinstall
                 execute_command "sudo apt-get remove --purge -y -qq ${linuxqq_package_name}" "卸载并清除旧版QQ (apt)"
                 execute_command "sudo apt-get autoremove -y -qq" "清理旧版QQ残留依赖 (apt)"
             fi
         else
-            log "未检测到已安装的 LinuxQQ，将进行全新安装。"
+            # 如果没有安装 LinuxQQ, 但 package.json 存在, 则提示用户
+            if [ "${package_json_exists}" = true ]; then
+                 log "包管理器未记录 LinuxQQ 安装, 但将继续执行安装/重装流程。"
+            else
+                 log "未检测到已安装的 LinuxQQ 或其核心文件, 将进行全新安装。"
+            fi
         fi
-        install_linuxqq
+        # --- 完成卸载 ---
+
+        # --- 执行安装 ---
+        install_linuxqq 
+        # --- 完成安装 ---
+
+        # --- 回复备份 ---
+        if [ "${backup_created}" = true ]; then
+            log "准备恢复 Napcat 配置从 ${backup_path}..."
+            if ! sudo mkdir -p "${napcat_config_path}"; then
+                 log "严重警告: 无法创建目标配置目录 (${napcat_config_path}) 进行恢复。"
+            else
+                # 恢复配置
+                if sudo cp -a "${backup_path}/." "${napcat_config_path}/"; then
+                    log "Napcat 配置恢复成功到 ${napcat_config_path}"
+
+                    sudo chmod -R 777 "${napcat_config_path}"
+                else
+                    log "警告: Napcat 配置恢复失败 (从 ${backup_path} 到 ${napcat_config_path})。请检查 ${backup_path} 中的备份文件。"
+                fi
+            fi
+
+            log "清理备份目录 ${backup_path}..."
+            sudo rm -rf "${backup_path}"
+        else
+            log "之前未创建备份, 无需恢复配置。"
+        fi
+        # --- 完成回复配置 ---
     else
         if [ "${package_installer}" = "rpm" ]; then
             if rpm -q ${linuxqq_package_name} &> /dev/null; then
