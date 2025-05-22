@@ -126,66 +126,112 @@ function network_test() {
     local timeout=10  # 设置超时秒数
     local status=0
     target_proxy=""
-    proxy_num=${proxy_num:-9}
+
+    local current_proxy_setting="${proxy_num_arg:-9}"
 
     log "开始网络测试: ${parm1}..."
+    # 观察实际使用的代理设置
+    log "命令行传入代理参数 (proxy_num_arg): '${proxy_num_arg}', 本次测试生效设置: '${current_proxy_setting}'"
 
     if [ "${parm1}" == "Github" ]; then
         proxy_arr=("https://ghfast.top"  "https://gh.wuliya.xin" "https://gh-proxy.com")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
-        check_url=""
+        check_url="" # 当前代码会测试代理服务器的根路径
     else
         log "错误: 未知的网络测试目标 '${parm1}', 默认测试 Github"
-        parm1="Github"
+        parm1="Github" # 确保 parm1 被重置以便后续逻辑正确执行
+        # 为 Github 重置 proxy_arr 和 check_url
         proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     fi
 
-    if [ ! -z "${proxy_num}" ] && [ "${proxy_num}" -ge 1 ] && [ "${proxy_num}" -le ${#proxy_arr[@]} ]; then
-        log "手动指定代理: ${proxy_arr[$proxy_num-1]}"
-        target_proxy="${proxy_arr[$proxy_num-1]}"
+    # 后续逻辑中使用 current_proxy_setting
+    # 1: 指定了有效的代理服务器序号 (1 到 N)
+    if [[ "${current_proxy_setting}" -ge 1 && "${current_proxy_setting}" -le ${#proxy_arr[@]} ]]; then
+        log "手动指定代理: ${proxy_arr[$((current_proxy_setting-1))]}" # 数组索引从0开始
+        target_proxy="${proxy_arr[$((current_proxy_setting-1))]}"
+    # 2: 指定了 0 (禁用代理), 或未指定 (默认为9, 自动测试), 或指定了无效序号
     else
-        if [ "${proxy_num}" -ne 0 ]; then
-            log "proxy 未指定或超出范围, 正在检查${parm1}代理可用性..."
-            for proxy in "${proxy_arr[@]}"; do
-                log "测试代理: ${proxy}"
-                # 添加超时参数 --connect-timeout 和 --max-time
-                status=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}" "${proxy}/${check_url}")
-                curl_exit=$?
+        # current_proxy_setting 不是 0, 则表示需要自动测试代理 (例如为9) 或指定了无效序号
+        if [ "${current_proxy_setting}" -ne 0 ]; then
+            log "代理设置为自动测试或指定无效 ('${current_proxy_setting}'), 正在检查 ${parm1} 代理可用性..."
+            
+            # 仅当存在 check_url 或测试目标是 Docker (它会测试代理根路径)
+            if [ -n "${check_url}" ] || [ "${parm1}" == "Docker" ]; then
+                for proxy_candidate in "${proxy_arr[@]}"; do
+                    local test_target_url
+                    if [ -n "${check_url}" ]; then
+                        test_target_url="${proxy_candidate}/${check_url}"
+                    else # Docker 且 check_url 为空的情况
+                        test_target_url="${proxy_candidate}/" # 测试代理的根路径
+                    fi
 
-                # 检查curl是否超时或失败
-                if [ $curl_exit -ne 0 ]; then
-                    log "代理 ${proxy} 测试失败或超时 (错误码: $curl_exit)"
-                    continue
-                fi
+                    log "测试代理: ${proxy_candidate} (目标URL: ${test_target_url})"
+                    # 从 curl 命令获取 HTTP 状态码和退出码
+                    status_and_exit_code=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${test_target_url}")
+                    status=$(echo "${status_and_exit_code}" | cut -d: -f1)
+                    curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
 
-                if [ "${parm1}" == "Github" ] && [ ${status} -eq 200 ]; then
-                    found=1
-                    target_proxy="${proxy}"
-                    log "将使用${parm1}代理: ${proxy}"
-                    break
-                elif [ "${parm1}" == "Docker" ] && ([ ${status} -eq 200 ] || [ ${status} -eq 301 ]); then
-                    found=1
-                    target_proxy="${proxy}"
-                    log "将使用${parm1}代理: ${proxy}"
-                    break
-                fi
-            done
+
+                    if [ "${curl_exit_code}" -ne 0 ]; then
+                        log "代理 ${proxy_candidate} 测试失败或超时 (curl 退出码: ${curl_exit_code})"
+                        continue
+                    fi
+
+                    # HTTP 状态码
+                    if ([ "${parm1}" == "Github" ] && [ "${status}" -eq 200 ]) || \
+                       ([ "${parm1}" == "Docker" ] && ([ "${status}" -eq 200 ] || [ "${status}" -eq 301 ] || [ "${status}" -eq 302 ])); then # 302重定向
+                        found=1
+                        target_proxy="${proxy_candidate}"
+                        log "将使用 ${parm1} 代理: ${target_proxy}"
+                        break
+                    else
+                        log "代理 ${proxy_candidate} 返回 HTTP 状态 ${status}, 不适用。"
+                    fi
+                done
+            else
+                 log "警告: ${parm1} 代理测试缺少有效的检查URL, 无法自动选择代理。"
+                 # target_proxy 保持为空
+            fi
 
             if [ ${found} -eq 0 ]; then
-                log "警告: 无法找到可用的${parm1}代理，将尝试直连..."
-                # 尝试直连，看是否能访问
-                status=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}" "${check_url}")
-                if [ $? -eq 0 ] && [ ${status} -eq 200 ]; then
-                    log "直连${parm1}成功，将不使用代理"
+                log "警告: 无法找到可用的 ${parm1} 代理。"
+                if [ -n "${check_url}" ]; then # 仅当有检查URL时才尝试直连
+                    log "将尝试直连 ${check_url}..."
+                    status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
+                    status=$(echo "${status_and_exit_code}" | cut -d: -f1)
+                    curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
+
+                    if [ "${curl_exit_code}" -eq 0 ] && [ "${status}" -eq 200 ]; then
+                        log "直连 ${parm1} 成功，将不使用代理。"
+                        target_proxy="" # 清空代理
+                    else
+                        log "警告: 无法直连到 ${parm1} (${check_url}) (HTTP状态: ${status}, curl退出码: ${curl_exit_code})，请检查网络。将继续尝试安装，但可能会失败。"
+                        target_proxy="" # 清空代理
+                    fi
                 else
-                    log "警告: 无法连接到${parm1}，请检查网络。将继续尝试安装，但可能会失败。"
+                    log "无检查URL, 无法尝试直连。不使用代理。"
+                    target_proxy="" # 清空代理
                 fi
             fi
         else
-            log "代理已关闭, 将直接连接${parm1}..."
+            # 此 else 块对应 current_proxy_setting 为 0 (通过参数明确禁用代理)
+            log "代理已通过参数关闭 (序号 0), 将直接连接 ${parm1}..."
+            target_proxy="" # 确保没有设置代理
+            if [ -n "${check_url}" ]; then
+                status_and_exit_code=$(curl -k --connect-timeout ${timeout} --max-time $((timeout*2)) -o /dev/null -s -w "%{http_code}:%{exitcode}" "${check_url}")
+                status=$(echo "${status_and_exit_code}" | cut -d: -f1)
+                curl_exit_code=$(echo "${status_and_exit_code}" | cut -d: -f2)
+                if [ "${curl_exit_code}" -eq 0 ] && [ "${status}" -eq 200 ]; then
+                    log "直连 ${parm1} (${check_url}) 测试成功。"
+                else
+                    log "警告: 直连 ${parm1} (${check_url}) 测试失败 (HTTP状态: ${status}, curl退出码: ${curl_exit_code}) 或网络不通。"
+                fi
+            else
+                log "无检查URL (${parm1}), 代理关闭状态下不执行网络测试。"
+            fi
         fi
     fi
 }
