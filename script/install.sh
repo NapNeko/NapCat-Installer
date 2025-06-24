@@ -123,9 +123,9 @@ function detect_package_installer() {
 
 function dnf_is_el_or_fedora() {
     if [ -f "/etc/fedora-release" ]; then
-        dnf_host = "fedora"
+        dnf_host="fedora"
     else
-        dnf_host = "el"
+        dnf_host="el"
     fi
 }
 
