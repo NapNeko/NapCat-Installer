@@ -101,6 +101,7 @@ function detect_package_manager() {
         package_manager="apt-get"
     elif command -v dnf &> /dev/null; then
         package_manager="dnf"
+        dnf_is_el_or_fedora
     else
         log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
         exit 1
@@ -118,6 +119,14 @@ function detect_package_installer() {
         exit 1
     fi
     log "当前基础包管理器: ${package_installer}"
+}
+
+function dnf_is_el_or_fedora() {
+    if [ -f "/etc/fedora-release" ]; then
+        dnf_host="fedora"
+    else
+        dnf_host="el"
+    fi
 }
 
 function network_test() {
@@ -245,7 +254,9 @@ function install_dependency() {
         execute_command "sudo apt-get update -y -qq" "更新软件包列表"
         execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
-        execute_command "sudo dnf install -y epel-release" "安装epel"
+        if [ "${dnf_host}" = "el" ]; then
+            execute_command "sudo dnf install -y epel-release" "安装epel"
+        fi
         execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
     fi
     log "更新依赖成功..."
@@ -626,7 +637,7 @@ function install_linuxqq() {
             log "检测到当前目录下存在QQ安装包, 将使用本地安装包进行安装。"
         fi
 
-        execute_command "sudo dnf localinstall -y ./QQ.rpm" "安装QQ"
+        execute_command "sudo dnf install -y ./QQ.rpm" "安装QQ"
         rm -f QQ.rpm
     elif [ "${package_manager}" = "apt-get" ]; then
         if ! [ -f "QQ.deb" ]; then
@@ -903,7 +914,9 @@ function docker_install() {
             execute_command "sudo apt-get update -y -qq" "更新软件包列表"
             execute_command "sudo apt-get install -y -qq curl" "安装 curl"
         elif [ "${package_manager}" = "dnf" ]; then
-            execute_command "sudo dnf install -y epel-release" "安装epel"
+            if [ "${dnf_host}" = "el" ]; then
+                execute_command "sudo dnf install -y epel-release" "安装epel"
+            fi
             execute_command "sudo dnf install --allowerasing -y curl" "安装 curl"
         fi
         execute_command "sudo curl -k -fsSL https://get.docker.com -o get-docker.sh" "下载docker安装脚本"
@@ -1042,7 +1055,9 @@ function chekc_whiptail() {
             execute_command "sudo apt-get update -y -qq" "更新软件包列表"
             execute_command "sudo apt-get install -y -qq whiptail" "安装whiptail"
         elif [ "${package_manager}" = "dnf" ]; then
-            execute_command "sudo dnf install -y epel-release" "安装epel"
+            if [ "${dnf_host}" = "el" ]; then
+                execute_command "sudo dnf install -y epel-release" "安装epel"
+            fi
             execute_command "sudo dnf install --allowerasing -y whiptail" "安装whiptail"
         fi
     fi
