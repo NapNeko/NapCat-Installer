@@ -2,26 +2,26 @@ name: ShellCheck 🛠
 
 on:
   push:
-    paths:
-      - '**/*.sh'
+    branches: [ main ]
   pull_request:
-    paths:
-      - '**/*.sh'
 
 jobs:
-  lint:
+  full_scan:
+    name: Full Scan
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
-
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
-
-      - name: Differential ShellCheck
+          fetch-depth: 0  # 确保获取完整的 Git 历史记录
+      - name: 🐚 Full ShellCheck
         uses: redhat-plumbers-in-action/differential-shellcheck@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          triggering-event: ${{ github.event_name }}
+          strict-check-on-push: true
+          base: ${{ github.event.before }}
+          head: ${{ github.sha }}
           severity: error
