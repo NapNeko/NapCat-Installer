@@ -100,27 +100,30 @@ function get_system_arch() {
 function detect_package_manager() {
     if command -v apt-get &> /dev/null; then
         package_manager="apt-get"
+        package_installer="dpkg" # 确定为 dpkg
     elif command -v dnf &> /dev/null; then
         package_manager="dnf"
+        package_installer="rpm"   # 确定为 rpm
         dnf_is_el_or_fedora
     else
         log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
         exit 1
     fi
     log "当前高级包管理器: ${package_manager}"
-}
-
-function detect_package_installer() {
-    if command -v dpkg &> /dev/null; then
-        package_installer="dpkg"
-    elif command -v rpm &> /dev/null; then
-        package_installer="rpm"
-    else
-        log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
-        exit 1
-    fi
     log "当前基础包管理器: ${package_installer}"
 }
+
+# function detect_package_installer() {
+#     if command -v dpkg &> /dev/null; then
+#         package_installer="dpkg"
+#     elif command -v rpm &> /dev/null; then
+#         package_installer="rpm"
+#     else
+#         log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
+#         exit 1
+#     fi
+#     log "当前基础包管理器: ${package_installer}"
+# }
 
 function dnf_is_el_or_fedora() {
     if [ -f "/etc/fedora-release" ]; then
@@ -404,7 +407,7 @@ function check_linuxqq(){
     fi
 
     linuxqq_target_build=${linuxqq_target_version##*-}
-    detect_package_installer
+    #detect_package_installer 不再使用改版本
 
     log "最低linuxQQ版本: ${linuxqq_target_version}, 构建: ${linuxqq_target_build}"
     if [ "${force}" = "y" ]; then
@@ -739,6 +742,7 @@ function install_napcat() {
 
     sudo chmod -R 777 "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
+    # TODO: FIXME: 实际上下面的这种重定向会导致权限问题 ,但是由于脚本在启动时强制要求了必须使用root权限运行, 所以这里的bug并不会被触发 
     sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > /opt/QQ/resources/app/loadNapCat.js
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
