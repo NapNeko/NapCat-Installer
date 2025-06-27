@@ -8,6 +8,7 @@ CYAN='\033[0;1;36;96m'
 BLUE='\033[0;1;34;94m'
 NC='\033[0m'
 
+
 TARGET_FOLDER="/opt/QQ/resources/app/app_launcher"
 
 function logo() {
