@@ -146,7 +146,7 @@ function network_test() {
     log "命令行传入代理参数 (proxy_num_arg): '${proxy_num_arg}', 本次测试生效设置: '${current_proxy_setting}'"
 
     if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghfast.top" "https://gh.wuliya.xin" "https://gh-proxy.com")
+        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
@@ -155,7 +155,7 @@ function network_test() {
         log "错误: 未知的网络测试目标 '${parm1}', 默认测试 Github"
         parm1="Github" # 确保 parm1 被重置以便后续逻辑正确执行
         # 为 Github 重置 proxy_arr 和 check_url
-        proxy_arr=("https://ghfast.top" "https://ghp.ci" "https://gh.wuliya.xin" "https://gh-proxy.com" "https://x.haod.me")
+        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     fi
 
