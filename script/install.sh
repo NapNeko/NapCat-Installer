@@ -667,7 +667,7 @@ function install_linuxqq() {
         fi
 
         log "安装 $TARGET_PKG 中..."
-        if sudo apt-get install -qq "$TARGET_PKG"; then
+        if sudo apt-get install -y -qq "$TARGET_PKG"; then
             log "安装 $TARGET_PKG 成功"
         else
             log "安装 $TARGET_PKG 失败"
