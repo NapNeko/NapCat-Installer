@@ -659,21 +659,19 @@ function install_linuxqq() {
         execute_command "sudo apt-get install -f -y -qq ./QQ.deb" "安装QQ"
         execute_command "sudo apt-get install -y -qq libnss3" "安装libnss3"
         execute_command "sudo apt-get install -y -qq libgbm1" "安装libgbm1"
-        log "安装libasound2中..."
-        sudo apt-get install -y -qq libasound2
-        if [ $? -eq 0 ]; then
-            log "安装libasound2 成功"
+        log "检测系统可用的 libasound2 ..."
+        if apt-cache show libasound2t64 >/dev/null 2>&1; then
+            TARGET_PKG="libasound2t64" # Ubuntu 24.04 / Debian Sid 及以后
         else
-            log "安装libasound2 失败"
-            log "尝试安装libasound2t64中..."
-            sudo apt-get install -y -qq libasound2t64
-            wait $!
-            if [ $? -eq 0 ]; then
-                log "安装libasound2 成功"
-            else
-                log "安装libasound2t64 失败"
-                exit 1
-            fi
+            TARGET_PKG="libasound2" # Ubuntu 22.04 / Debian 12 及以前
+        fi
+
+        log "安装 $TARGET_PKG 中..."
+        if sudo apt-get install -qq "$TARGET_PKG"; then
+            log "安装 $TARGET_PKG 成功"
+        else
+            log "安装 $TARGET_PKG 失败"
+            exit 1
         fi
         sudo rm -f QQ.deb
     fi
