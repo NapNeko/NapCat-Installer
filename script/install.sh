@@ -271,7 +271,22 @@ function install_dependency() {
     detect_package_manager
 
     if [ "${package_manager}" = "apt-get" ]; then
-        execute_command "sudo apt-get update -y -qq" "更新软件包列表"
+        log "更新软件包列表中..."
+        if ! sudo apt-get update -y -qq; then
+            log "更新软件包列表失败, 询问是否继续安装(如果您是全新的系统请选择N)"
+            read -p "是否继续? (Y/n): " continue_install
+            case "${continue_install}" in
+            [nN] | [nN][oO])
+                log "用户选择停止安装。"
+                exit 1
+                ;;
+            *)
+                log "警告: 跳过软件源更新, 继续安装..."
+                ;;
+            esac
+        else
+            log "更新软件包列表成功"
+        fi
         execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
     elif [ "${package_manager}" = "dnf" ]; then
         if [ "${dnf_host}" = "el" ]; then
