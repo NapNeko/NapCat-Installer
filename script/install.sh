@@ -273,7 +273,7 @@ function install_dependency() {
     if [ "${package_manager}" = "apt-get" ]; then
         log "更新软件包列表中..."
         if ! sudo apt-get update -y -qq; then
-            log "更新软件包列表失败, 询问是否继续安装(如果您是全新的系统请选择N)"
+            log "更新软件包列表失败, 是否继续安装(如果您是全新的系统请选择N)"
             read -p "是否继续? (Y/n): " continue_install
             case "${continue_install}" in
             [nN] | [nN][oO])
