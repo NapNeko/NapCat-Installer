@@ -445,7 +445,7 @@ function check_linuxqq() {
         local qq_is_installed=false
         local backup_created=false
 
-        # --- 备份 ---
+        #  备份 
         if [ -d "${napcat_config_path}" ]; then
             log "检测到现有 Napcat 配置 (${napcat_config_path}), 准备备份..."
             if sudo mkdir -p "${backup_path}"; then
@@ -464,7 +464,7 @@ function check_linuxqq() {
         else
             log "警告: 未找到现有 Napcat 配置目录 (${napcat_config_path}), 您之前的配置无法找到。"
         fi
-        # --- 完成备份 ---
+        #  完成备份 
 
         # package manager
         if [ "${package_installer}" = "rpm" ]; then
@@ -477,7 +477,7 @@ function check_linuxqq() {
             fi
         fi
 
-        # --- 卸载 ---
+        #  卸载 
         if [ "${qq_is_installed}" = true ]; then
             log "检测到已安装的 LinuxQQ，将卸载旧版本以进行重装..."
             if [ "${package_manager}" = "dnf" ]; then
@@ -494,13 +494,13 @@ function check_linuxqq() {
                 log "未检测到已安装的 LinuxQQ 或其核心文件, 将进行全新安装。"
             fi
         fi
-        # --- 完成卸载 ---
+        #  完成卸载 
 
-        # --- 执行安装 ---
+        #  执行安装 
         install_linuxqq
-        # --- 完成安装 ---
+        #  完成安装 
 
-        # --- 回复备份 ---
+        #  回复备份 
         if [ "${backup_created}" = true ]; then
             log "准备恢复 Napcat 配置从 ${backup_path}..."
             if ! sudo mkdir -p "${napcat_config_path}"; then
@@ -510,7 +510,7 @@ function check_linuxqq() {
                 if sudo cp -a "${backup_path}/." "${napcat_config_path}/"; then
                     log "Napcat 配置恢复成功到 ${napcat_config_path}"
 
-                    sudo chmod -R 777 "${napcat_config_path}"
+                    sudo chmod -R +x "${napcat_config_path}"
                 else
                     log "警告: Napcat 配置恢复失败 (从 ${backup_path} 到 ${napcat_config_path})。请检查 ${backup_path} 中的备份文件。"
                 fi
@@ -521,7 +521,7 @@ function check_linuxqq() {
         else
             log "之前未创建备份, 无需恢复配置。"
         fi
-        # --- 完成回复配置 ---
+        #  完成回复配置 
     else
         if [ "${package_installer}" = "rpm" ]; then
             if rpm -q ${linuxqq_package_name} &>/dev/null; then
@@ -770,7 +770,7 @@ function install_napcat() {
         log "移动文件成功"
     fi
 
-    sudo chmod -R 777 "${TARGET_FOLDER}/napcat/"
+    sudo chmod -R +x "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
     # TODO: FIXME: 实际上下面的这种重定向会导致权限问题 ,但是由于脚本在启动时强制要求了必须使用root权限运行, 所以这里的bug并不会被触发
     sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" >/opt/QQ/resources/app/loadNapCat.js
@@ -1136,7 +1136,7 @@ function main_tui() {
     done
 }
 
-# --- 脚本主逻辑开始 ---
+#  脚本主逻辑开始 
 
 # 1. 分析参数
 while [[ $# -gt 0 ]]; do
