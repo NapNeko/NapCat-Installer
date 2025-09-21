@@ -643,7 +643,7 @@ function install_napcat() {
 
     chmod -R +x "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
-    echo "(async () => {await import('file://${TARGET_FOLDER}/napcat/napcat.mjs');})();" > "${QQ_BASE_PATH}/resources/app/loadNapCat.js"
+    echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > "${QQ_BASE_PATH}/resources/app/loadNapCat.js"
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
         clean
