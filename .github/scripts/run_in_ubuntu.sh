@@ -1,0 +1,55 @@
+#!/bin/bash
+# 当任何命令失败时立即退出
+set -e
+
+echo " [ROOT] Creating test user 'testuser' "
+
+useradd -m -s /bin/bash testuser
+
+echo " [ROOT] Configuring passwordless sudo for 'testuser' "
+# 授予无密码 sudo 权限
+echo 'testuser ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/testuser
+chmod 440 /etc/sudoers.d/testuser
+
+echo " [ROOT] Changing repository ownership to 'testuser' "
+chown -R testuser:testuser .
+
+echo " [ROOT] Switching to 'testuser' to run installation and verification "
+# 使用 -i 模拟登录 shell，确保 HOME 被正确设置
+sudo -u testuser -i bash <<'EOF'
+set -e
+
+echo " [testuser] Running installation script as $(whoami) "
+bash script/install.sh --docker n --cli n --proxy 0
+
+QQ_EXECUTABLE="$HOME/Napcat/opt/QQ/qq"
+echo " [testuser] Verifying installation by running the application "
+
+if [ ! -f "$QQ_EXECUTABLE" ]; then
+    echo "Verification failed: QQ executable not found at $QQ_EXECUTABLE"
+    exit 1
+fi
+
+echo " [testuser] Starting QQ with xvfb-run in the background "
+xvfb-run -a "$QQ_EXECUTABLE" > /tmp/qq.log 2>&1 &
+
+echo " [testuser] Waiting 20 seconds for application to stabilize or crash "
+sleep 20
+
+echo " [testuser] Verifying if the 'qq' process is running "
+if pgrep -u "$(whoami)" -f "$QQ_EXECUTABLE"; then
+    echo "Verification successful: QQ process is running."
+    echo " [testuser] Cleaning up running processes "
+    pkill -u "$(whoami)" -f "$QQ_EXECUTABLE"
+    sleep 5
+    pkill -f "Xvfb" || true
+else
+    echo "Verification failed: QQ process is NOT running. It may have crashed."
+    echo " QQ Log Output "
+    cat /tmp/qq.log || echo "Log file not found."
+    pkill -f "Xvfb" || true
+    exit 1
+fi
+EOF
+
+echo " [ROOT] Ubuntu CI test successful "

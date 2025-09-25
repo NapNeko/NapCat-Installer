@@ -1,0 +1,30 @@
+name: Ubuntu Installation Test
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'script/install.sh'
+      - '.github/workflows/ubuntu_install.yml'
+      - '.github/scripts/run_in_ubuntu.sh'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'script/install.sh'
+      - '.github/workflows/ubuntu_install.yml'
+      - '.github/scripts/run_in_ubuntu.sh'
+  workflow_dispatch:
+
+jobs:
+  test-install:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Make helper script executable
+        run: chmod +x .github/scripts/run_in_ubuntu.sh
+
+      - name: Run installation and verification
+        # 脚本内部会创建用户并切换，所以这里需要 sudo 权限来启动脚本
+        run: sudo bash .github/scripts/run_in_ubuntu.sh
