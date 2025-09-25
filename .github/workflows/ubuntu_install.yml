@@ -25,6 +25,10 @@ jobs:
       - name: Make helper script executable
         run: chmod +x .github/scripts/run_in_ubuntu.sh
 
-      - name: Run installation and verification
-        # 脚本内部会创建用户并切换，所以这里需要 sudo 权限来启动脚本
-        run: sudo bash .github/scripts/run_in_ubuntu.sh
+      - name: Run test in Ubuntu container
+        run: |
+          docker run --rm \
+            -v "$PWD":"/repo" \
+            -w "/repo" \
+            ubuntu:latest \
+            bash .github/scripts/run_in_ubuntu.sh

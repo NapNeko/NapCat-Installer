@@ -308,21 +308,37 @@ function install_dependency() {
         else
             log "更新软件包列表成功"
         fi
-        #  Added dependencies for QQ and tools for extracting .rpm 
-        execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps rpm2cpio cpio libnss3 libgbm1" "安装依赖"
-        log "检测系统可用的 libasound2 ..."
-        if apt-cache show libasound2t64 >/dev/null 2>&1; then
-            TARGET_PKG="libasound2t64" # Ubuntu 24.04 / Debian Sid 及以后
-        else
-            TARGET_PKG="libasound2" # Ubuntu 22.04 / Debian 12 及以前
-        fi
-        log "安装 $TARGET_PKG 中..."
-        if sudo apt-get install -y -qq "$TARGET_PKG"; then
-            log "安装 $TARGET_PKG 成功"
-        else
-            log "安装 $TARGET_PKG 失败"
-            exit 1
-        fi
+
+        # 静态依赖包列表
+        local static_pkgs="zip unzip jq curl xvfb screen xauth procps rpm2cpio cpio libnss3 libgbm1"
+        
+        # 需要检查是否存在 t64 版本的动态依赖包列表
+        local pkgs_to_check=(
+            "libglib2.0-0"
+            "libatk1.0-0"
+            "libatspi2.0-0"
+            "libgtk-3-0"
+            "libasound2"
+        )
+        
+        local resolved_pkgs=()
+        log "正在检测系统库版本 (t64)..."
+        for pkg_base in "${pkgs_to_check[@]}"; do
+            local t64_variant="${pkg_base}t64"
+            # 使用 apt-cache show 检查 t64 版本的包是否存在
+            if apt-cache show "${t64_variant}" >/dev/null 2>&1; then
+                log "检测到 ${t64_variant}，将使用此版本。"
+                resolved_pkgs+=("${t64_variant}")
+            else
+                log "未检测到 ${t64_variant}，将使用标准版本 ${pkg_base}。"
+                resolved_pkgs+=("${pkg_base}")
+            fi
+        done
+
+        # 将所有需要安装的包合并到一个命令中执行
+        local all_pkgs_to_install="${static_pkgs} ${resolved_pkgs[*]}"
+        execute_command "sudo apt-get install -y -qq ${all_pkgs_to_install}" "安装依赖"
+
     elif [ "${package_manager}" = "dnf" ]; then
         if [ "${dnf_host}" = "el" ]; then
             install_el_repo
@@ -588,7 +604,7 @@ function install_linuxqq_rootless() {
         execute_command "dpkg -x ./${qq_package_file} ${INSTALL_BASE_DIR}" "解压QQ (.deb)"
     elif [ "${package_installer}" = "rpm" ]; then
         # 切换到目标目录再执行解压，以确保文件路径正确
-        (cd "${INSTALL_BASE_DIR}" && rpm2cpio "../${qq_package_file}" | cpio -idmv)
+        rpm2cpio "${PWD}/${qq_package_file}" | (cd "${INSTALL_BASE_DIR}" && cpio -idmv)
         if [ $? -eq 0 ]; then
             log "解压QQ (.rpm)成功"
         else
@@ -924,11 +940,11 @@ function show_main_info() {
     log "  ${CYAN}${INSTALL_BASE_DIR}${NC}"
     log ""
     log "${GREEN}启动 Napcat (无需 sudo):${NC}"
-    log "  ${CYAN}xvfb-run -a ${QQ_EXECUTABLE} ${NC}"
+    log "  ${CYAN}xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox ${NC}"
     log ""
     log "${GREEN}后台运行 Napcat (使用 screen, 无需 sudo):${NC}"
-    log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE} \"${NC}"
-    log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE}  -q QQ号码\"${NC}"
+    log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox \"${NC}"
+    log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox  -q QQ号码\"${NC}"
     log "  附加到会话: ${CYAN}screen -r napcat${NC} (按 Ctrl+A 然后按 D 分离)"
     log "  停止会话: ${CYAN}screen -S napcat -X quit${NC}"
     log ""
@@ -1171,7 +1187,6 @@ elif [ "${use_docker}" = "n" ]; then
     show_main_info
     clean
     log "Shell (Rootless) 安装流程完成。"
-    exit 0
 else
     log "错误: 无效的安装选项 (use_docker=${use_docker})。"
     exit 1

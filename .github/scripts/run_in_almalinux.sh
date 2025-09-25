@@ -26,7 +26,8 @@ echo " [testuser] Changing to repository directory: ${REPO_PATH}"
 cd "${REPO_PATH}"
 
 echo " [testuser] Running installation script as $(whoami) "
-bash script/install.sh --docker n --cli n --proxy 0
+
+(bash script/install.sh --docker n --cli n --proxy 0)
 
 QQ_EXECUTABLE="$HOME/Napcat/opt/QQ/qq"
 echo " [testuser] Verifying installation by running the application "
@@ -37,7 +38,8 @@ if [ ! -f "$QQ_EXECUTABLE" ]; then
 fi
 
 echo " [testuser] Starting QQ with xvfb-run in the background "
-xvfb-run -a "$QQ_EXECUTABLE" > /tmp/qq.log 2>&1 &
+# 添加 --no-sandbox 参数
+xvfb-run -a "$QQ_EXECUTABLE" --no-sandbox > /tmp/qq.log 2>&1 &
 
 echo " [testuser] Waiting 20 seconds for application to stabilize or crash "
 sleep 20
