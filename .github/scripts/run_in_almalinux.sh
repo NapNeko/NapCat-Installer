@@ -13,14 +13,17 @@ echo 'testuser ALL=(ALL) NOPASSWD:ALL' > /etc/sudoers.d/testuser
 chmod 440 /etc/sudoers.d/testuser
 
 echo " [ROOT] Changing repository ownership to 'testuser' "
-
 chown -R testuser:testuser .
 
 echo " [ROOT] Switching to 'testuser' to run installation and verification "
-# 使用 -i 模拟登录 shell，确保 HOME 被正确设置
-# 将后续所有命令作为一个代码块，以 testuser 身份执行
-sudo -u testuser -i bash <<'EOF'
+# 将当前工作目录 ($PWD) 作为参数传递给 testuser 的 shell
+sudo -u testuser -i bash -s "$PWD" <<'EOF'
 set -e
+
+# 第一个参数 ($1) 是从父 shell 传递过来的仓库路径
+REPO_PATH="$1"
+echo " [testuser] Changing to repository directory: ${REPO_PATH}"
+cd "${REPO_PATH}"
 
 echo " [testuser] Running installation script as $(whoami) "
 bash script/install.sh --docker n --cli n --proxy 0
