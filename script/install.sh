@@ -264,6 +264,29 @@ function install_el_repo() {
     fi
 }
 
+function enable_dnf_repos_and_cache() {
+    log "检查并配置 dnf 仓库..."
+    # 确保 config-manager 工具可用
+    if ! rpm -q dnf-plugins-core >/dev/null 2>&1; then
+        execute_command "sudo dnf install -y dnf-plugins-core" "安装 dnf-plugins-core"
+    fi
+
+    # 检查 appstream 仓库是否存在且被禁用
+    if dnf repolist all | grep -q '^appstream\s'; then
+        if dnf repolist disabled | grep -q '^appstream\s'; then
+            execute_command "sudo dnf config-manager --set-enabled appstream" "启用 AppStream 仓库"
+        else
+            log "AppStream 仓库已启用。"
+        fi
+    else
+        log "警告: 未检测到 appstream 仓库，依赖安装可能不完整。"
+    fi
+
+    # 刷新缓存以确保更改生效
+    execute_command "sudo dnf makecache --refresh" "刷新 dnf 缓存"
+}
+
+
 function install_dependency() {
     log "开始安装系统依赖 (此步骤需要 sudo 权限)..."
     detect_package_manager
@@ -304,8 +327,17 @@ function install_dependency() {
         if [ "${dnf_host}" = "el" ]; then
             install_el_repo
         fi
+        enable_dnf_repos_and_cache
         #  Added cpio for extracting .rpm 
-        execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng cpio" "安装依赖"
+        base_pkgs="zip unzip jq curl screen procps-ng cpio nss mesa-libgbm atk at-spi2-atk gtk3 alsa-lib pango cairo libdrm libXcursor libXrandr libXdamage libXcomposite libXfixes libXrender libXi libXtst libXScrnSaver cups-libs libxkbcommon"
+        x_extra="libX11-xcb"
+        mesa_extra="mesa-dri-drivers mesa-libEGL mesa-libGL"
+        xcb_utils="xcb-util xcb-util-image xcb-util-wm xcb-util-keysyms xcb-util-renderutil"
+        fonts="fontconfig dejavu-sans-fonts"
+        xvfb_pkg="xorg-x11-server-Xvfb"
+        all_pkgs="${base_pkgs} ${x_extra} ${mesa_extra} ${xcb_utils} ${fonts} ${xvfb_pkg}"
+
+        execute_command "sudo dnf install --allowerasing -y ${all_pkgs}" "安装依赖"
     fi
     log "更新依赖成功..."
 }
