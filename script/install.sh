@@ -8,7 +8,17 @@ CYAN='\033[0;1;36;96m'
 BLUE='\033[0;1;34;94m'
 NC='\033[0m'
 
-TARGET_FOLDER="/opt/QQ/resources/app/app_launcher"
+#  Rootless Installation Paths 
+# 主安装目录，位于用户主目录下
+INSTALL_BASE_DIR="$HOME/Napcat"
+# QQ 解压后的实际基础路径
+QQ_BASE_PATH="$INSTALL_BASE_DIR/opt/QQ"
+# NapCat 注入的目标文件夹
+TARGET_FOLDER="$QQ_BASE_PATH/resources/app/app_launcher"
+# QQ 可执行文件路径
+QQ_EXECUTABLE="$QQ_BASE_PATH/qq"
+# QQ package.json 路径
+QQ_PACKAGE_JSON_PATH="$QQ_BASE_PATH/resources/app/package.json"
 
 function logo() {
     echo -e " ${MAGENTA}┌${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}──${RED}──${YELLOW}──${GREEN}──${CYAN}──${BLUE}──${MAGENTA}${RED}─┐${NC}"
@@ -44,10 +54,10 @@ function log() {
 
 function print_introduction() {
     echo -e "${BLUE}下面是 NapCat 安装脚本的功能简介！${NC}😋"
-    echo -e "${BLUE}--------------------------------------------------${NC}"
+    echo -e "${BLUE}--${NC}"
     echo -e "${BLUE}接下来，您可以选择安装方式:${NC}"
-    echo -e "  1. ${GREEN}Docker 安装${NC}: ${BLUE}通过容器运行。${NC}"
-    echo -e "  2. ${GREEN}本地安装${NC}: ${BLUE}直接在本系统执行安装。分为下面两种：${NC}(${YELLOW}默认${NC})${NC}"
+    echo -e "  1. ${GREEN}Docker 安装${NC}: ${BLUE}通过容器运行 (需要 root 或 docker 用户组权限)。${NC}"
+    echo -e "  2. ${GREEN}本地安装 (Rootless)${NC}: ${BLUE}直接在本系统当前用户下安装，无需 root 权限。${NC}(${YELLOW}默认${NC})${NC}"
     echo -e "  	 - ${GREEN}可视化安装${NC}: ${BLUE}通过交互式界面来引导你安装。${NC}"
     echo -e "  	 - ${GREEN}Shell 安装${NC}: ${BLUE}直接在当前Shell会话执行安装。${NC}(${YELLOW}默认${NC})${NC}"
     echo ""
@@ -55,7 +65,7 @@ function print_introduction() {
     echo -e "  - ${CYAN}NapCat TUI-CLI${NC}: ${BLUE}允许你在 ssh、没有桌面、WebUI 难以使用的情况下可视化交互配置 Napcat${NC}"
     echo ""
     echo -e "${BLUE}使用 --help 来获取更多功能介绍${NC}"
-    echo -e "${BLUE}--------------------------------------------------${NC}"
+    echo -e "${BLUE}--${NC}"
 }
 
 function execute_command() {
@@ -79,7 +89,7 @@ function check_sudo() {
 function check_root() {
     # 检查是否为ID为0的用户
     if [[ $EUID -ne 0 ]]; then
-        log "错误: 此脚本需要以 root 权限运行。"
+        log "错误: 此操作需要以 root 权限运行。"
         log "请尝试使用 'sudo bash ${0}' 或切换到 root 用户后运行。"
         exit 1
     fi
@@ -111,18 +121,6 @@ function detect_package_manager() {
     log "当前高级包管理器: ${package_manager}"
     log "当前基础包管理器: ${package_installer}"
 }
-
-# function detect_package_installer() {
-#     if command -v dpkg &> /dev/null; then
-#         package_installer="dpkg"
-#     elif command -v rpm &> /dev/null; then
-#         package_installer="rpm"
-#     else
-#         log "基础包管理器检查失败, 目前仅支持dpkg/rpm。"
-#         exit 1
-#     fi
-#     log "当前基础包管理器: ${package_installer}"
-# }
 
 function dnf_is_el_or_fedora() {
     if [ -f "/etc/fedora-release" ]; then
@@ -265,9 +263,32 @@ function install_el_repo() {
         execute_command "sudo dnf install -y epel-release" "安装epel"
     fi
 }
-# 似乎是适配的系统较少
+
+function enable_dnf_repos_and_cache() {
+    log "检查并配置 dnf 仓库..."
+    # 确保 config-manager 工具可用
+    if ! rpm -q dnf-plugins-core >/dev/null 2>&1; then
+        execute_command "sudo dnf install -y dnf-plugins-core" "安装 dnf-plugins-core"
+    fi
+
+    # 检查 appstream 仓库是否存在且被禁用
+    if dnf repolist all | grep -q '^appstream\s'; then
+        if dnf repolist disabled | grep -q '^appstream\s'; then
+            execute_command "sudo dnf config-manager --set-enabled appstream" "启用 AppStream 仓库"
+        else
+            log "AppStream 仓库已启用。"
+        fi
+    else
+        log "警告: 未检测到 appstream 仓库，依赖安装可能不完整。"
+    fi
+
+    # 刷新缓存以确保更改生效
+    execute_command "sudo dnf makecache --refresh" "刷新 dnf 缓存"
+}
+
+
 function install_dependency() {
-    log "开始更新依赖..."
+    log "开始安装系统依赖 (此步骤需要 sudo 权限)..."
     detect_package_manager
 
     if [ "${package_manager}" = "apt-get" ]; then
@@ -287,12 +308,52 @@ function install_dependency() {
         else
             log "更新软件包列表成功"
         fi
-        execute_command "sudo apt-get install -y -qq zip unzip jq curl xvfb screen xauth procps" "安装zip unzip jq curl xvfb screen xauth procps"
+
+        # 静态依赖包列表
+        local static_pkgs="zip unzip jq curl xvfb screen xauth procps rpm2cpio cpio libnss3 libgbm1"
+        
+        # 需要检查是否存在 t64 版本的动态依赖包列表
+        local pkgs_to_check=(
+            "libglib2.0-0"
+            "libatk1.0-0"
+            "libatspi2.0-0"
+            "libgtk-3-0"
+            "libasound2"
+        )
+        
+        local resolved_pkgs=()
+        log "正在检测系统库版本 (t64)..."
+        for pkg_base in "${pkgs_to_check[@]}"; do
+            local t64_variant="${pkg_base}t64"
+            # 使用 apt-cache show 检查 t64 版本的包是否存在
+            if apt-cache show "${t64_variant}" >/dev/null 2>&1; then
+                log "检测到 ${t64_variant}，将使用此版本。"
+                resolved_pkgs+=("${t64_variant}")
+            else
+                log "未检测到 ${t64_variant}，将使用标准版本 ${pkg_base}。"
+                resolved_pkgs+=("${pkg_base}")
+            fi
+        done
+
+        # 将所有需要安装的包合并到一个命令中执行
+        local all_pkgs_to_install="${static_pkgs} ${resolved_pkgs[*]}"
+        execute_command "sudo apt-get install -y -qq ${all_pkgs_to_install}" "安装依赖"
+
     elif [ "${package_manager}" = "dnf" ]; then
         if [ "${dnf_host}" = "el" ]; then
             install_el_repo
         fi
-        execute_command "sudo dnf install --allowerasing -y zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng" "安装zip unzip jq curl xorg-x11-server-Xvfb screen procps-ng"
+        enable_dnf_repos_and_cache
+        #  Added cpio for extracting .rpm 
+        base_pkgs="zip unzip jq curl screen procps-ng cpio nss mesa-libgbm atk at-spi2-atk gtk3 alsa-lib pango cairo libdrm libXcursor libXrandr libXdamage libXcomposite libXfixes libXrender libXi libXtst libXScrnSaver cups-libs libxkbcommon"
+        x_extra="libX11-xcb"
+        mesa_extra="mesa-dri-drivers mesa-libEGL mesa-libGL"
+        xcb_utils="xcb-util xcb-util-image xcb-util-wm xcb-util-keysyms xcb-util-renderutil"
+        fonts="fontconfig dejavu-sans-fonts"
+        xvfb_pkg="xorg-x11-server-Xvfb"
+        all_pkgs="${base_pkgs} ${x_extra} ${mesa_extra} ${xcb_utils} ${fonts} ${xvfb_pkg}"
+
+        execute_command "sudo dnf install --allowerasing -y ${all_pkgs}" "安装依赖"
     fi
     log "更新依赖成功..."
 }
@@ -302,23 +363,24 @@ function create_tmp_folder() {
         log "文件夹已存在且不为空(./NapCat)，请重命名后重新执行脚本以防误删"
         exit 1
     fi
-    sudo mkdir -p ./NapCat
+    #  Removed sudo 
+    mkdir -p ./NapCat
 }
 
 function clean() {
-    sudo rm -rf ./NapCat
+    #  Removed sudo 
+    rm -rf ./NapCat
     if [ $? -ne 0 ]; then
         log "临时目录删除失败, 请手动删除 ./NapCat。"
     fi
-    sudo rm -rf ./NapCat.Shell.zip
+    rm -rf ./NapCat.Shell.zip
     if [ $? -ne 0 ]; then
-        log "NapCatQQ压缩包删除失败, 请手动删除 ${DEFAULT_FILE}。"
+        log "NapCatQQ压缩包删除失败, 请手动删除 NapCat.Shell.zip。"
     fi
-    if [ -f "/etc/init.d/napcat" ]; then
-        sudo rm -f /etc/init.d/napcat
-    fi
+    #  Clean up downloaded QQ package 
+    rm -f ./QQ.deb ./QQ.rpm
     if [ -d "${TARGET_FOLDER}/napcat.packet" ]; then
-        sudo rm -rf "${TARGET_FOLDER}/napcat.packet"
+        rm -rf "${TARGET_FOLDER}/napcat.packet"
     fi
 }
 
@@ -332,6 +394,7 @@ function download_napcat() {
         network_test "Github"
         napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
 
+        #  Removed sudo from curl and mv 
         curl -k -L -# "${napcat_download_url}" -o "${default_file}"
         if [ $? -ne 0 ]; then
             log "文件下载失败, 请检查错误。或者手动下载压缩包并放在脚本同目录下"
@@ -344,7 +407,7 @@ function download_napcat() {
         else
             ext_file=$(basename "${napcat_download_url}")
             if [ -f "${ext_file}" ]; then
-                sudo mv "${ext_file}" "${default_file}"
+                mv "${ext_file}" "${default_file}"
                 if [ $? -ne 0 ]; then
                     log "文件更名失败, 请检查错误。"
                     clean
@@ -361,7 +424,8 @@ function download_napcat() {
     fi
 
     log "正在验证 ${default_file}..."
-    sudo unzip -t "${default_file}" >/dev/null 2>&1
+    #  Removed sudo 
+    unzip -t "${default_file}" >/dev/null 2>&1
     if [ $? -ne 0 ]; then
         log "文件验证失败, 请检查错误。"
         clean
@@ -369,7 +433,8 @@ function download_napcat() {
     fi
 
     log "正在解压 ${default_file}..."
-    sudo unzip -q -o -d ./NapCat NapCat.Shell.zip
+    #  Removed sudo 
+    unzip -q -o -d ./NapCat NapCat.Shell.zip
     if [ $? -ne 0 ]; then
         log "文件解压失败, 请检查错误。"
         clean
@@ -380,9 +445,6 @@ function download_napcat() {
 function get_qq_target_version() {
     #固定 3.2.19-39038
     linuxqq_target_version="3.2.19-39038"
-    #linuxqq_target_version=$(jq -r '.linuxVersion' ./NapCat/qqnt.json)
-    #linuxqq_target_verhash=$(jq -r '.linuxVerHash' ./NapCat/qqnt.json)
-
 }
 
 function compare_linuxqq_versions() {
@@ -416,315 +478,171 @@ function compare_linuxqq_versions() {
     fi
 }
 
+#  REWRITTEN: check_linuxqq for rootless 
 function check_linuxqq() {
     get_qq_target_version
-    linuxqq_package_name="linuxqq"
-    local qq_package_json_path="/opt/QQ/resources/app/package.json"             # QQ包json路径
-    local napcat_config_path="/opt/QQ/resources/app/app_launcher/napcat/config" # Napcat config
-    local backup_path="/tmp/napcat_config_backup_$(date +%s)"                   # 备份文件夹路径
+    # 使用 rootless 路径
+    local napcat_config_path="${TARGET_FOLDER}/napcat/config"
+    local backup_path="/tmp/napcat_config_backup_$(date +%s)"
 
     if [[ -z "${linuxqq_target_version}" || "${linuxqq_target_version}" == "null" ]]; then
         log "无法获取目标QQ版本, 请检查错误。"
         exit 1
     fi
 
-    local package_json_exists=true
-    if ! [ -f "${qq_package_json_path}" ]; then
-        log "警告: LinuxQQ 的核心配置文件 (${qq_package_json_path}) 未找到。可能安装不完整或已损坏。"
-        log "将触发 LinuxQQ 的安装/重装流程。"
-        force="y" #  package.json 丢失则强制重装
-        package_json_exists=false
+    log "目标LinuxQQ版本: ${linuxqq_target_version}"
+
+    local qq_installed=false
+    # 核心检测逻辑：检查 package.json 文件是否存在
+    if [ -f "${QQ_PACKAGE_JSON_PATH}" ]; then
+        qq_installed=true
+        linuxqq_installed_version=$(jq -r '.version' "${QQ_PACKAGE_JSON_PATH}")
+        log "检测到已安装的QQ, 版本: ${linuxqq_installed_version}"
+        compare_linuxqq_versions "${linuxqq_installed_version}" "${linuxqq_target_version}"
+    else
+        log "未在 ${INSTALL_BASE_DIR} 检测到已安装的QQ。"
+        force="y" # 未安装，强制执行安装
     fi
 
-    linuxqq_target_build=${linuxqq_target_version##*-}
-    #detect_package_installer 不再使用改版本
-
-    log "最低linuxQQ版本: ${linuxqq_target_version}, 构建: ${linuxqq_target_build}"
     if [ "${force}" = "y" ]; then
-        log "强制重装模式..."
-        local qq_is_installed=false
+        log "将执行全新安装或强制重装..."
         local backup_created=false
 
-        #  备份 
-        if [ -d "${napcat_config_path}" ]; then
+        # 如果QQ已安装且存在Napcat配置，则备份
+        if [ "${qq_installed}" = true ] && [ -d "${napcat_config_path}" ]; then
             log "检测到现有 Napcat 配置 (${napcat_config_path}), 准备备份..."
-            if sudo mkdir -p "${backup_path}"; then
+            if mkdir -p "${backup_path}"; then
                 log "创建备份目录: ${backup_path}"
-                if sudo cp -a "${napcat_config_path}/." "${backup_path}/"; then
+                if cp -a "${napcat_config_path}/." "${backup_path}/"; then
                     log "Napcat 配置备份成功到 ${backup_path}"
                     backup_created=true
                 else
-                    log "警告: Napcat 配置备份失败 (从 ${napcat_config_path} 到 ${backup_path})。将继续重装，但配置可能丢失。"
-                    # 清理备份的临时目录
-                    sudo rm -rf "${backup_path}"
+                    log "警告: Napcat 配置备份失败。"
                 fi
             else
-                log "严重警告: 无法创建备份目录 ${backup_path}。将继续重装，但配置可能丢失。"
-            fi
-        else
-            log "警告: 未找到现有 Napcat 配置目录 (${napcat_config_path}), 您之前的配置无法找到。"
-        fi
-        #  完成备份 
-
-        # package manager
-        if [ "${package_installer}" = "rpm" ]; then
-            if rpm -q ${linuxqq_package_name} &>/dev/null; then
-                qq_is_installed=true
-            fi
-        elif [ "${package_installer}" = "dpkg" ]; then
-            if dpkg -l | grep -q "^ii.*${linuxqq_package_name}"; then # More precise check
-                qq_is_installed=true
+                log "严重警告: 无法创建备份目录 ${backup_path}。"
             fi
         fi
 
-        #  卸载 
-        if [ "${qq_is_installed}" = true ]; then
-            log "检测到已安装的 LinuxQQ，将卸载旧版本以进行重装..."
-            if [ "${package_manager}" = "dnf" ]; then
-                execute_command "sudo dnf remove -y ${linuxqq_package_name}" "卸载旧版QQ (dnf)"
-            elif [ "${package_manager}" = "apt-get" ]; then
-                execute_command "sudo apt-get remove --purge -y -qq ${linuxqq_package_name}" "卸载并清除旧版QQ (apt)"
-                execute_command "sudo apt-get autoremove -y -qq" "清理旧版QQ残留依赖 (apt)"
-            fi
-        else
-            # 如果没有安装 LinuxQQ, 但 package.json 存在, 则提示用户
-            if [ "${package_json_exists}" = true ]; then
-                log "包管理器未记录 LinuxQQ 安装, 但将继续执行安装/重装流程。"
-            else
-                log "未检测到已安装的 LinuxQQ 或其核心文件, 将进行全新安装。"
-            fi
+        # “卸载”操作现在只是简单地删除旧的安装目录
+        if [ -d "${INSTALL_BASE_DIR}" ]; then
+            log "正在移除旧的安装目录: ${INSTALL_BASE_DIR}"
+            rm -rf "${INSTALL_BASE_DIR}"
         fi
-        #  完成卸载 
 
-        #  执行安装 
-        install_linuxqq
-        #  完成安装 
+        # 执行新的 rootless 安装函数
+        install_linuxqq_rootless
 
-        #  回复备份 
+        # 如果创建了备份，则恢复
         if [ "${backup_created}" = true ]; then
             log "准备恢复 Napcat 配置从 ${backup_path}..."
-            if ! sudo mkdir -p "${napcat_config_path}"; then
+            if ! mkdir -p "${napcat_config_path}"; then
                 log "严重警告: 无法创建目标配置目录 (${napcat_config_path}) 进行恢复。"
             else
-                # 恢复配置
-                if sudo cp -a "${backup_path}/." "${napcat_config_path}/"; then
+                if cp -a "${backup_path}/." "${napcat_config_path}/"; then
                     log "Napcat 配置恢复成功到 ${napcat_config_path}"
-
-                    sudo chmod -R +x "${napcat_config_path}"
                 else
-                    log "警告: Napcat 配置恢复失败 (从 ${backup_path} 到 ${napcat_config_path})。请检查 ${backup_path} 中的备份文件。"
+                    log "警告: Napcat 配置恢复失败。"
                 fi
             fi
-
             log "清理备份目录 ${backup_path}..."
-            sudo rm -rf "${backup_path}"
-        else
-            log "之前未创建备份, 无需恢复配置。"
+            rm -rf "${backup_path}"
         fi
-        #  完成回复配置 
     else
-        if [ "${package_installer}" = "rpm" ]; then
-            if rpm -q ${linuxqq_package_name} &>/dev/null; then
-                linuxqq_installed_version=$(rpm -q --queryformat '%{VERSION}' ${linuxqq_package_name})
-                linuxqq_installed_build=${linuxqq_installed_version##*-}
-                log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
-
-                compare_linuxqq_versions "${linuxqq_installed_version}" "${linuxqq_target_version}"
-                if [ "${force}" = "y" ]; then
-                    log "版本未满足要求, 需要更新。"
-                    install_linuxqq
-                else
-                    log "版本已满足要求, 无需更新。"
-                    if [ "${use_tui}" = "y" ]; then
-                        reinstall=$(whiptail --title "Napcat Installer" --yesno "版本已满足要求, 是否重装。" 15 50 3>&1 1>&2 2>&3)
-                        if [ $? -eq 0 ]; then
-                            force="y"
-                        else
-                            force="n"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        fi
-                    else
-                        log "是否强制重装, 10s超时跳过重装(y/n)"
-                        read -t 10 -r force
-                        if [[ $? -ne 0 ]]; then
-                            log "超时未输入, 跳过重装"
-                            force="n"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        elif [[ "${force}" =~ ^[Yy]?$ ]]; then
-                            force="y"
-                            log "强制重装..."
-                            install_linuxqq
-                        elif [[ "${force}" == "n" ]]; then
-                            force="n"
-                            log "跳过重装"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        else
-                            force="n"
-                            log "输入错误, 跳过重装"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        fi
-                    fi
-                fi
-            else
-                install_linuxqq
-            fi
-        elif [ "${package_installer}" = "dpkg" ]; then
-            if dpkg -l | grep ${linuxqq_package_name} &>/dev/null; then
-                linuxqq_installed_version=$(dpkg -l | grep "^ii" | grep "linuxqq" | awk '{print $3}')
-                linuxqq_installed_build=${linuxqq_installed_version##*-}
-                log "${linuxqq_package_name} 已安装, 版本: ${linuxqq_installed_version}, 构建: ${linuxqq_installed_build}"
-
-                compare_linuxqq_versions "${linuxqq_installed_version}" "${linuxqq_target_version}"
-                if [ "${force}" = "y" ]; then
-                    log "版本未满足要求, 需要更新。"
-                    install_linuxqq
-                else
-                    log "版本已满足要求, 无需更新。"
-                    if [ "${use_tui}" = "y" ]; then
-                        reinstall=$(whiptail --title "Napcat Installer" --yesno "版本已满足要求, 是否重装。" 15 50 3>&1 1>&2 2>&3)
-                        if [ $? -eq 0 ]; then
-                            force="y"
-                        else
-                            force="n"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        fi
-                    else
-                        log "是否强制重装, 10s超时跳过重装(y/n)"
-                        read -t 10 -r force
-                        if [[ $? -ne 0 ]]; then
-                            log "超时未输入, 跳过重装"
-                            force="n"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        elif [[ "${force}" =~ ^[Yy]?$ ]]; then
-                            force="y"
-                            log "强制重装..."
-                            install_linuxqq
-                        elif [[ "${force}" == "n" ]]; then
-                            force="n"
-                            log "跳过重装"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        else
-                            force="n"
-                            log "输入错误, 跳过重装"
-                            update_linuxqq_config "${linuxqq_installed_version}" "${linuxqq_installed_build}"
-                        fi
-                    fi
-                fi
-            else
-                install_linuxqq
-            fi
-        fi
+        log "版本已满足要求, 无需更新。"
+        update_linuxqq_config "${linuxqq_installed_version}"
     fi
 }
 
-function install_linuxqq() {
-    #base_url="https://dldir1.qq.com/qqfile/qq/QQNT/${linuxqq_target_verhash}/linuxqq_${linuxqq_target_version}"
+#  REWRITTEN: install_linuxqq_rootless for rootless 
+function install_linuxqq_rootless() {
     get_system_arch
-    log "安装LinuxQQ..."
-    # if [ "${system_arch}" = "amd64" ]; then
-    #     if [ "${package_installer}" = "rpm" ]; then
-    #         qq_download_url="${base_url}_x86_64.rpm"
-    #     elif [ "${package_installer}" = "dpkg" ]; then
-    #         qq_download_url="${base_url}_amd64.deb"
-    #     fi
-    # elif [ "${system_arch}" = "arm64" ]; then
-    #     if [ "${package_installer}" = "rpm" ]; then
-    #         qq_download_url="${base_url}_aarch64.rpm"
-    #     elif [ "${package_installer}" = "dpkg" ]; then
-    #         qq_download_url="${base_url}_arm64.deb"
-    #     fi
-    # fi
+    log "开始以用户模式安装 LinuxQQ 到 ${INSTALL_BASE_DIR}..."
+
+    local qq_download_url=""
+    local qq_package_file=""
+
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
             qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/c773cdf7/linuxqq_3.2.19-39038_x86_64.rpm"
+            qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
             qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/c773cdf7/linuxqq_3.2.19-39038_amd64.deb"
+            qq_package_file="QQ.deb"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
             qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/c773cdf7/linuxqq_3.2.19-39038_aarch64.rpm"
+            qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
             qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/c773cdf7/linuxqq_3.2.19-39038_arm64.deb"
+            qq_package_file="QQ.deb"
         fi
     fi
 
-    if ! [[ -f "QQ.deb" || -f "QQ.rpm" ]]; then
-        if [ "${qq_download_url}" = "" ]; then
-            log "获取QQ下载链接失败, 请检查错误, 或者手动下载QQ安装包并重命名为QQ.deb或QQ.rpm(注意自己的系统架构)放到脚本同目录下。"
-            exit 1
-        fi
+    if [ -z "${qq_download_url}" ]; then
+        log "获取QQ下载链接失败, 架构不支持。"
+        exit 1
+    fi
+
+    if ! [ -f "${qq_package_file}" ]; then
         log "QQ下载链接: ${qq_download_url}"
-        log "如果无法下载请手动下载QQ安装包并重命名为QQ.deb或QQ.rpm(注意自己的系统架构)放到脚本同目录下"
-    fi
-
-    if [ "${package_manager}" = "dnf" ]; then
-        if ! [ -f "QQ.rpm" ]; then
-            sudo curl -k -L -# "${qq_download_url}" -o QQ.rpm
-            if [ $? -ne 0 ]; then
-                log "文件下载失败, 请检查错误。"
-                exit 1
-            else
-                log "文件下载成功"
-            fi
-        else
-            log "检测到当前目录下存在QQ安装包, 将使用本地安装包进行安装。"
-        fi
-
-        execute_command "sudo dnf install -y ./QQ.rpm" "安装QQ"
-        rm -f QQ.rpm
-    elif [ "${package_manager}" = "apt-get" ]; then
-        if ! [ -f "QQ.deb" ]; then
-            sudo curl -k -L -# "${qq_download_url}" -o QQ.deb
-            if [ $? -ne 0 ]; then
-                log "文件下载失败, 请检查错误。"
-                exit 1
-            else
-                log "文件下载成功"
-            fi
-        else
-            log "检测到当前目录下存在QQ安装包, 将使用本地安装包进行安装。"
-        fi
-
-        execute_command "sudo apt-get install -f -y -qq ./QQ.deb" "安装QQ"
-        execute_command "sudo apt-get install -y -qq libnss3" "安装libnss3"
-        execute_command "sudo apt-get install -y -qq libgbm1" "安装libgbm1"
-        log "检测系统可用的 libasound2 ..."
-        if apt-cache show libasound2t64 >/dev/null 2>&1; then
-            TARGET_PKG="libasound2t64" # Ubuntu 24.04 / Debian Sid 及以后
-        else
-            TARGET_PKG="libasound2" # Ubuntu 22.04 / Debian 12 及以前
-        fi
-
-        log "安装 $TARGET_PKG 中..."
-        if sudo apt-get install -y -qq "$TARGET_PKG"; then
-            log "安装 $TARGET_PKG 成功"
-        else
-            log "安装 $TARGET_PKG 失败"
+        curl -k -L -# "${qq_download_url}" -o "${qq_package_file}"
+        if [ $? -ne 0 ]; then
+            log "文件下载失败, 请检查错误。"
             exit 1
         fi
-        sudo rm -f QQ.deb
+    else
+        log "检测到当前目录下存在QQ安装包, 将使用本地安装包进行安装。"
     fi
-    update_linuxqq_config "${linuxqq_target_version}" "${linuxqq_target_build}"
+
+    log "正在创建安装目录: ${INSTALL_BASE_DIR}"
+    mkdir -p "${INSTALL_BASE_DIR}"
+
+    log "正在解压QQ文件..."
+    if [ "${package_installer}" = "dpkg" ]; then
+        execute_command "dpkg -x ./${qq_package_file} ${INSTALL_BASE_DIR}" "解压QQ (.deb)"
+    elif [ "${package_installer}" = "rpm" ]; then
+        # 切换到目标目录再执行解压，以确保文件路径正确
+        rpm2cpio "${PWD}/${qq_package_file}" | (cd "${INSTALL_BASE_DIR}" && cpio -idmv)
+        if [ $? -eq 0 ]; then
+            log "解压QQ (.rpm)成功"
+        else
+            log "解压QQ (.rpm)失败"
+            exit 1
+        fi
+    fi
+
+    # 清理下载的安装包
+    rm -f "${qq_package_file}"
+    update_linuxqq_config "${linuxqq_target_version}"
 }
 
+#  REWRITTEN: update_linuxqq_config for rootless 
 function update_linuxqq_config() {
     log "正在更新用户QQ配置..."
+    local target_ver="${1}"
+    local build_id="${target_ver##*-}"
+    # 直接定位到当前用户的配置文件
+    local user_config_dir="$HOME/.config/QQ/versions"
+    local user_config_file="${user_config_dir}/config.json"
 
-    confs=$(sudo find /home -name "config.json" -path "*/.config/QQ/versions/*" 2>/dev/null)
-    if [ -f "/root/.config/QQ/versions/config.json" ]; then
-        confs="/root/.config/QQ/versions/config.json ${confs}"
+    if [ -d "${user_config_dir}" ]; then
+        if [ -f "${user_config_file}" ]; then
+            log "正在修改 ${user_config_file}..."
+            # 无需 sudo，直接操作用户文件
+            jq --arg targetVer "${target_ver}" --arg buildId "${build_id}" \
+                '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${user_config_file}" >"${user_config_file}.tmp" &&
+                mv "${user_config_file}.tmp" "${user_config_file}" || {
+                log "QQ配置更新失败!"
+            }
+        else
+            log "未找到用户配置文件 ${user_config_file}, QQ首次启动时会自动创建。"
+        fi
+    else
+        log "未找到用户配置目录 ${user_config_dir}, QQ首次启动时会自动创建。"
     fi
-
-    for conf in ${confs}; do
-        log "正在修改 ${conf}..."
-        sudo jq --arg targetVer "${1}" --arg buildId "${2}" \
-            '.baseVersion = $targetVer | .curVersion = $targetVer | .buildId = $buildId' "${conf}" >"${conf}.tmp" &&
-            sudo mv "${conf}.tmp" "${conf}" || {
-            log "QQ配置更新失败! "
-            exit 1
-        }
-    done
-    log "更新用户QQ配置成功..."
+    log "更新用户QQ配置完成。"
 }
 
 function check_napcat() {
@@ -756,12 +674,13 @@ function check_napcat() {
 }
 
 function install_napcat() {
+    #  Removed sudo, updated paths 
     if [ ! -d "${TARGET_FOLDER}/napcat" ]; then
-        sudo mkdir -p "${TARGET_FOLDER}/napcat/"
+        mkdir -p "${TARGET_FOLDER}/napcat/"
     fi
 
     log "正在移动文件..."
-    sudo cp -r -f ./NapCat/* "${TARGET_FOLDER}/napcat/"
+    cp -r -f ./NapCat/* "${TARGET_FOLDER}/napcat/"
     if [ $? -ne 0 -a $? -ne 1 ]; then
         log "文件移动失败, 请检查错误。"
         clean
@@ -770,10 +689,9 @@ function install_napcat() {
         log "移动文件成功"
     fi
 
-    sudo chmod -R +x "${TARGET_FOLDER}/napcat/"
+    chmod -R +x "${TARGET_FOLDER}/napcat/"
     log "正在修补文件..."
-    # TODO: FIXME: 实际上下面的这种重定向会导致权限问题 ,但是由于脚本在启动时强制要求了必须使用root权限运行, 所以这里的bug并不会被触发
-    sudo echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" >/opt/QQ/resources/app/loadNapCat.js
+    echo "(async () => {await import('file:///${TARGET_FOLDER}/napcat/napcat.mjs');})();" > "${QQ_BASE_PATH}/resources/app/loadNapCat.js"
     if [ $? -ne 0 ]; then
         log "loadNapCat.js文件写入失败, 请检查错误。"
         clean
@@ -787,12 +705,12 @@ function install_napcat() {
 
 function modify_qq_config() {
     log "正在修改QQ启动配置..."
-
-    if sudo jq '.main = "./loadNapCat.js"' /opt/QQ/resources/app/package.json >./package.json.tmp; then
-        sudo mv ./package.json.tmp /opt/QQ/resources/app/package.json
-        echo "修改QQ启动配置成功..."
+    #  Removed sudo, updated paths 
+    if jq '.main = "./loadNapCat.js"' "${QQ_PACKAGE_JSON_PATH}" >./package.json.tmp; then
+        mv ./package.json.tmp "${QQ_PACKAGE_JSON_PATH}"
+        log "修改QQ启动配置成功..."
     else
-        echo "修改QQ启动配置失败..."
+        log "修改QQ启动配置失败..."
         exit 1
     fi
 }
@@ -814,7 +732,7 @@ function check_napcat_cli() {
     fi
 }
 
-# TODO:TUI
+# TUI-CLI 安装到 /usr/local/bin，保留 sudo 是合理的
 function install_napcat_cli() {
     local cli_script_url_base="https://raw.githubusercontent.com/NapNeko/NapCat-TUI-CLI/main/script"
     local cli_script_name="install-cli.sh"
@@ -822,21 +740,19 @@ function install_napcat_cli() {
     local cli_script_url="${target_proxy:+${target_proxy}/}${cli_script_url_base}/${cli_script_name}"
     local exit_status=1 # Default to failure
 
-    # Ensure network test has run for Github to potentially set target_proxy
-    # If network_test hasn't run, run it now.
-    if [ -z "${target_proxy+x}" ]; then # Check if target_proxy is set at all
+    if [ -z "${target_proxy+x}" ]; then
         log "运行 TUI-CLI 安装的网络测试..."
         network_test "Github"
-        # Allow continuing even if network_test fails, curl might still work without proxy
     fi
 
     log "下载外部 TUI-CLI 安装脚本从 ${cli_script_url}..."
+    # 使用 sudo 下载到当前目录，因为后续执行也需要 sudo
     sudo curl -k -L -# "${cli_script_url}" -o "${cli_script_local_path}"
 
     if [ $? -ne 0 ]; then
         log "错误: TUI-CLI 安装脚本 ${cli_script_name} 下载失败。"
-        sudo rm -f "${cli_script_local_path}" # Clean up potentially partial download
-        return 1                              # Indicate failure
+        sudo rm -f "${cli_script_local_path}"
+        return 1
     fi
 
     log "设置 TUI-CLI 安装脚本权限..."
@@ -844,18 +760,15 @@ function install_napcat_cli() {
     if [ $? -ne 0 ]; then
         log "错误: 设置 TUI-CLI 安装脚本 (${cli_script_local_path}) 执行权限失败。"
         sudo rm -f "${cli_script_local_path}"
-        return 1 # Indicate failure
+        return 1
     fi
 
     log "执行外部 TUI-CLI 安装脚本 (${cli_script_local_path})..."
-    # Pass the proxy number argument (use 9 for auto if not set)
     sudo "${cli_script_local_path}" "${proxy_num_arg:-9}"
 
-    exit_status=$? # Capture the exit status of the external script
+    exit_status=$?
     if [ ${exit_status} -ne 0 ]; then
         log "外部 TUI-CLI 安装脚本执行失败 (退出码: ${exit_status})。"
-        # Decide if this should be a fatal error for the main script
-        # return 1
     else
         log "外部 TUI-CLI 安装脚本执行成功。"
     fi
@@ -863,14 +776,13 @@ function install_napcat_cli() {
     log "清理 TUI-CLI 安装脚本 (${cli_script_local_path})..."
     sudo rm -f "${cli_script_local_path}"
 
-    return ${exit_status} # Return the exit status of the external script
+    return ${exit_status}
 }
 
 function generate_docker_command() {
     local qq=${1}
     local mode=${2}
 
-    # 检查模式是否有效
     if [[ "${mode}" != "ws" && "${mode}" != "reverse_ws" && "${mode}" != "reverse_http" ]]; then
         log "错误: 无效的运行模式 '${mode}', 请选择 ws, reverse_ws 或 reverse_http"
         return 1
@@ -974,10 +886,9 @@ function docker_install() {
         if [[ -z ${mode} ]]; then
             log "请选择模式 (ws/reverse_ws/reverse_http): "
             read -r mode
-            # 验证模式输入是否正确
             if [[ "${mode}" != "ws" && "${mode}" != "reverse_ws" && "${mode}" != "reverse_http" ]]; then
                 log "错误: 无效的运行模式 '${mode}', 请选择 ws, reverse_ws 或 reverse_http"
-                mode="" # 清空无效的模式，重新询问
+                mode=""
                 continue
             fi
         fi
@@ -1021,20 +932,24 @@ function docker_install() {
     log "安装成功"
 }
 
+#  REWRITTEN: show_main_info for rootless 
 function show_main_info() {
-    log "\n---------------- Shell 安装完成 ----------------"
+    log "\n- Shell (Rootless) 安装完成 -"
     log ""
-    log "${GREEN}启动 Napcat (需要图形环境或 Xvfb):${NC}"
-    log "  ${CYAN}sudo xvfb-run -a qq --no-sandbox${NC}"
+    log "${GREEN}安装位置:${NC}"
+    log "  ${CYAN}${INSTALL_BASE_DIR}${NC}"
     log ""
-    log "${GREEN}后台运行 Napcat (使用 screen)(请使用 root 账户):${NC}"
-    log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox\"${NC}"
-    log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a qq --no-sandbox -q QQ号码\"${NC}"
+    log "${GREEN}启动 Napcat (无需 sudo):${NC}"
+    log "  ${CYAN}xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox ${NC}"
+    log ""
+    log "${GREEN}后台运行 Napcat (使用 screen, 无需 sudo):${NC}"
+    log "  启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox \"${NC}"
+    log "  带账号启动: ${CYAN}screen -dmS napcat bash -c \"xvfb-run -a ${QQ_EXECUTABLE} --no-sandbox  -q QQ号码\"${NC}"
     log "  附加到会话: ${CYAN}screen -r napcat${NC} (按 Ctrl+A 然后按 D 分离)"
     log "  停止会话: ${CYAN}screen -S napcat -X quit${NC}"
     log ""
     log "${GREEN}Napcat 相关信息:${NC}"
-    log "  安装位置: ${TARGET_FOLDER}/napcat"
+    log "  插件位置: ${TARGET_FOLDER}/napcat"
     log "  WebUI Token: 查看 ${TARGET_FOLDER}/napcat/config/webui.json 文件获取"
     log ""
     if [ "${use_cli}" = "y" ]; then
@@ -1042,22 +957,22 @@ function show_main_info() {
     else
         log "${YELLOW}未安装 TUI-CLI 工具。如需使用便捷命令管理, 请重新运行安装脚本并选择安装 TUI-CLI (--cli y)。${NC}"
     fi
-    log "--------------------------------------------------"
+    log "--"
 }
-# TODO：TUI
+
 function show_cli_info() {
     log "${GREEN}TUI-CLI 工具用法 (napcat):${NC}"
-    log "  启动: ${CYAN}sudo napcat${NC}"
+    # CLI 工具安装在系统路径，可能需要 sudo
+    log "  启动: ${CYAN}napcat${NC}"
 }
 
 function shell_help() {
-    # Use print_introduction for general info, keep this for specific args
     echo -e "${YELLOW}命令选项 (高级用法):${NC}"
     echo "您可以在 原安装命令 后面添加以下参数:"
     echo ""
     echo -e "  ${CYAN}--tui${NC}                     使用 TUI 可视化交互安装"
     echo -e "  ${CYAN}--docker${NC} [${GREEN}y${NC}/${RED}n${NC}]            选择安装方式 (${GREEN}y${NC}: Docker, ${RED}n${NC}: Shell)"
-    echo -e "  ${CYAN}--cli${NC} [${GREEN}y${NC}/${RED}n${NC}]               (Shell安装时) 是否安装 TUI-CLI 工具 (${YELLOW}推荐${NC})(允许你在ssh、没有桌面、WebUI难以使用的情况下${YELLOW}可视化交互${NC}配置Napcat)"
+    echo -e "  ${CYAN}--cli${NC} [${GREEN}y${NC}/${RED}n${NC}]               (Shell安装时) 是否安装 TUI-CLI 工具 (${YELLOW}推荐${NC})"
     echo -e "  ${CYAN}--force${NC}                   (Shell安装时) 强制重装 LinuxQQ 和 NapCat"
     echo -e "  ${CYAN}--proxy${NC} [${BLUE}0-n${NC}]             指定下载代理序号 (${BLUE}0${NC}: 不使用, ${BLUE}1-n${NC}: 内置列表)"
     echo -e "  ${CYAN}--qq${NC} \"<号码>\"             (Docker安装时) 指定 QQ 号码"
@@ -1065,14 +980,14 @@ function shell_help() {
     echo -e "  ${CYAN}--confirm${NC} [${GREEN}y${NC}]             (Docker安装时) 跳过最终确认直接执行"
     echo ""
     echo -e "${YELLOW}使用示例:${NC}"
-    echo -e "  ${BLUE}# 使用 TUI 安装:${NC}"
-    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --tui${NC}"
+    echo -e "  ${BLUE}# 使用 TUI 进行 Shell (Rootless) 安装:${NC}"
+    echo -e "  ${CYAN}bash napcat.sh --tui${NC}"
     echo ""
     echo -e "  ${BLUE}# Docker 安装 (指定 QQ, 模式, 代理, 并跳过确认):${NC}"
-    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
+    echo -e "  ${CYAN}bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm y${NC}"
     echo ""
-    echo -e "  ${BLUE}# Shell 安装 (不装 TUI-CLI, 不用代理, 强制重装):${NC}"
-    echo -e "  ${CYAN}curl -k -o napcat.sh https://.../install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
+    echo -e "  ${BLUE}# Shell (Rootless) 安装 (不装 TUI-CLI, 不用代理, 强制重装):${NC}"
+    echo -e "  ${CYAN}bash napcat.sh --docker n --cli n --proxy 0 --force${NC}"
     echo ""
 }
 
@@ -1104,13 +1019,14 @@ function main_tui() {
         choice=$(
             whiptail --title "Napcat Installer" \
                 --menu "\n欢迎使用Napcat安装脚本\n请使用方向键(鼠标滚轮)+回车键使用" 12 50 3 \
-                "1" "🐚 shell安装" \
-                "2" "🐋 docker安装" \
+                "1" "🐚 Shell 安装 (Rootless)" \
+                "2" "🐋 Docker 安装" \
                 "3" "🚪 退出" 3>&1 1>&2 2>&3
         )
 
         case $choice in
         "1")
+            #  TUI Shell install flow 
             install_dependency
             download_napcat
             check_linuxqq
@@ -1121,6 +1037,8 @@ function main_tui() {
             clean
             ;;
         "2")
+            #  Docker install requires root 
+            check_root
             get_qq
             whiptail --title "Napcat Installer" --msgbox "     安装完成" 8 24
             ;;
@@ -1143,56 +1061,46 @@ while [[ $# -gt 0 ]]; do
     case $1 in
     --tui)
         use_tui="y"
-        shift # 消耗参数名
+        shift
         ;;
     --docker)
         use_docker="$2"
-        shift # 消耗参数名
-        shift # 消耗参数值
+        shift 2
         ;;
     --qq)
         qq="$2"
-        shift # 消耗参数名
-        shift # 消耗参数值
+        shift 2
         ;;
     --mode)
         mode="$2"
-        shift # 消耗参数名
-        shift # 消耗参数值
+        shift 2
         ;;
     --confirm)
-        # Allow --confirm or --confirm y
         if [[ "$2" =~ ^[Yy]$ ]] || [[ $# -eq 1 ]]; then
             confirm="y"
-            shift # 消耗参数名
-            # Check if there was a value and shift it
+            shift
             if [[ "$2" =~ ^[Yy]$ ]]; then
-                shift # 消耗多余的参数值
+                shift
             fi
         else
-            # Handle cases like --confirm n or invalid value
-            confirm="n" # Explicitly set to no if value is not 'y'
-            shift       # 消耗参数名
-            shift       # 消耗参数值
+            confirm="n"
+            shift 2
         fi
         ;;
     --force)
         force="y"
-        shift # 消耗参数名。!!旧的脚本这里似乎有问题!!
+        shift
         ;;
     --proxy)
-        proxy_num_arg="$2" # 保存代理序号
-        shift              # 消耗参数名
-        shift              # 消耗参数值
+        proxy_num_arg="$2"
+        shift 2
         ;;
     --cli)
         use_cli="$2"
-        shift # 消耗参数名
-        shift # 消耗参数值
+        shift 2
         ;;
     --help | -h)
         logo
-        #print_introduction
         shell_help
         exit 0
         ;;
@@ -1209,22 +1117,20 @@ clear
 logo
 print_introduction
 check_sudo
-check_root
+#  Root check is moved to be conditional 
 
 # 3. 首先处理TUI安装
 if [ "${use_tui}" = "y" ]; then
-    main_tui # 调用TUI安装函数
-    exit $?  # 退出TUI安装函数的状态码
+    main_tui
+    exit $?
 fi
 
 # 4. 非TUI模式，处理没有被设置的arg
-
-# 询问DOCKER
 if [ -z "${use_docker}" ]; then
     log "选择安装方式: Docker (容器化) 或 Shell (直接安装)?"
     log "输入 'y' 使用 Docker, 输入 'n' 使用 Shell。"
     read -t 10 -p "[y/N] (10秒后默认 N): " use_docker_input
-    echo "" # Newline after read
+    echo ""
 
     if [[ $? -ne 0 ]]; then
         log "超时未输入, 默认使用 Shell 安装。"
@@ -1241,32 +1147,28 @@ if [ -z "${use_docker}" ]; then
     fi
 fi
 
-# 询问CLI
 if [ "${use_docker}" = "n" ] && [ -z "${use_cli}" ]; then
     log "是否安装 NapCat TUI-CLI (命令行工具)?"
     log "输入 'y' 安装, 输入 'n' 跳过。"
-    read -t 10 -p "[y/N] (10秒后默认 N): " use_cli_input # 默认不安装
+    read -t 10 -p "[Y/n] (10秒后默认 Y): " use_cli_input
     echo ""
 
     if [[ $? -ne 0 ]]; then
-        log "超时未输入, 默认不安装 CLI。"
-        use_cli="n"                               # 默认不安装
-    elif [[ "${use_cli_input}" =~ ^[Yy]$ ]]; then # 只有 y 或 Y 才安装
-        log "选择安装 CLI。"
+        log "超时未输入, 默认安装 CLI。"
         use_cli="y"
-    # elif [[ "${use_cli_input}" =~ ^[Nn]$ ]] || [ -z "${use_cli_input}" ]; then # Explicit 'n' or empty defaults to no
-    #     log "选择不安装 CLI。"
-    #     use_cli="n"
-    else # 其他情况
-        log "选择或超时默认为不安装 CLI。"
+    elif [[ "${use_cli_input}" =~ ^[Nn]$ ]]; then
+        log "选择不安装 CLI。"
         use_cli="n"
+    else
+        log "选择或超时默认为安装 CLI。"
+        use_cli="y"
     fi
 fi
 
 # 5. 执行安装
-
 if [ "${use_docker}" = "y" ]; then
-    # Docker install needs qq, mode, confirm. Call docker_install which handles getting these if needed.
+    #  Check for root only when Docker is selected 
+    check_root
     docker_install
     exit_status=$?
     if [ ${exit_status} -eq 0 ]; then
@@ -1276,18 +1178,16 @@ if [ "${use_docker}" = "y" ]; then
     fi
     exit ${exit_status}
 elif [ "${use_docker}" = "n" ]; then
-    log "开始 Shell 安装流程..."
+    log "开始 Shell (Rootless) 安装流程..."
     install_dependency
     download_napcat
-    check_linuxqq    # Uses 'force' variable if set by args
-    check_napcat     # Uses 'force' variable if set by args
-    check_napcat_cli # Uses 'use_cli' variable determined above or by args
+    check_linuxqq
+    check_napcat
+    check_napcat_cli
     show_main_info
     clean
-    log "Shell 安装流程完成。"
-    exit 0
+    log "Shell (Rootless) 安装流程完成。"
 else
-    # This case should not be reached if logic above is correct
     log "错误: 无效的安装选项 (use_docker=${use_docker})。"
     exit 1
 fi
