@@ -328,6 +328,11 @@ function uninstall_old_version() {
         elif [ "${package_manager}" = "dnf" ]; then
             execute_command "sudo dnf remove -y linuxqq" "卸载旧版 linuxqq"
         fi
+
+        # 增加强制删除残留目录的逻辑
+        if [ -d "/opt/QQ" ]; then
+            execute_command "sudo rm -rf /opt/QQ" "彻底清理旧版QQ目录"
+        fi
         log "旧版本卸载完成。"
     else
         log "未检测到旧版本, 跳过卸载。"
