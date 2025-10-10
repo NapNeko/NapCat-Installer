@@ -321,7 +321,17 @@ function uninstall_old_version() {
     log "正在检查旧版本安装..."
     # 旧版本的特征是/opt/QQ下存在napcat目录
     if [ -d "/opt/QQ/resources/app/app_launcher/napcat" ]; then
-        log "旧版本存在, 准备自动卸载..."
+        log "检测到旧版本, 准备自动卸载..."
+        
+        echo -e "${YELLOW}警告: 检测到系统级安装的旧版本Napcat。接下来的操作将使用包管理器卸载 'linuxqq' 并彻底删除 '/opt/QQ' 目录。${NC}"
+        echo -e "${YELLOW}请确保您不再需要旧版本的任何配置文件。${NC}"
+        read -p "是否继续彻底删除旧版本? (y/N): " confirm_delete
+        
+        if [[ ! "${confirm_delete}" =~ ^[Yy]$ ]]; then
+            log "取消操作"
+            exit 1
+        fi
+
         detect_package_manager
         if [ "${package_manager}" = "apt-get" ]; then
             execute_command "sudo apt-get remove -y -qq linuxqq" "卸载旧版 linuxqq"
