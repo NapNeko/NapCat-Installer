@@ -318,7 +318,7 @@ function enable_dnf_repos_and_cache() {
 
 
 function uninstall_old_version() {
-    log "正在检查旧版本 (系统级) 安装..."
+    log "正在检查旧版本安装..."
     # 旧版本的特征是/opt/QQ下存在napcat目录
     if [ -d "/opt/QQ/resources/app/app_launcher/napcat" ]; then
         log "旧版本存在, 准备自动卸载..."
@@ -331,6 +331,13 @@ function uninstall_old_version() {
         log "旧版本卸载完成。"
     else
         log "未检测到旧版本, 跳过卸载。"
+    fi
+}
+
+function check_root_for_shell_install() {
+    if [[ $EUID -eq 0 ]]; then
+        log "警告: 您正在使用root权限执行本脚本（不推荐），脚本会在适当的地方向您申请sudo。"
+        echo -e "${YELLOW}[$(date +"%Y-%m-%d %H:%M:%S")]: 如果您正在使用旧版本的tui执行升级，那么会持续导致这个问题。请使用您首次安装 napcat 时的指令重新安装并且重装 tui${NC}"
     fi
 }
 
@@ -1225,6 +1232,7 @@ if [ "${use_docker}" = "y" ]; then
     fi
     exit ${exit_status}
 elif [ "${use_docker}" = "n" ]; then
+    check_root_for_shell_install
     log "开始 Shell (Rootless) 安装流程..."
     uninstall_old_version
     install_dependency
