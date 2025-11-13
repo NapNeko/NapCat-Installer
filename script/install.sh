@@ -715,7 +715,7 @@ function update_linuxqq_config() {
 }
 
 function check_napcat() {
-    napcat_target_version=$(jq -r '.version' "./NapCat/package.json")
+    napcat_target_version=$(jq -r '.version' "./NapCat/NapCat.Shell/package.json")
     if [[ -z "${napcat_target_version}" || "${napcat_target_version}" == "null" ]]; then
         log "无法获取NapCatQQ版本, 请检查错误。"
         exit 1
