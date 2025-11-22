@@ -715,31 +715,8 @@ function update_linuxqq_config() {
 }
 
 function check_napcat() {
-    napcat_target_version=$(jq -r '.version' "./NapCat/package.json")
-    if [[ -z "${napcat_target_version}" || "${napcat_target_version}" == "null" ]]; then
-        log "无法获取NapCatQQ版本, 请检查错误。"
-        exit 1
-    else
-        log "最新NapCatQQ版本: v${napcat_target_version}"
-    fi
-
-    if [ "$force" = "y" ]; then
-        log "强制重装模式..."
-        install_napcat
-    else
-        if [ -d "${TARGET_FOLDER}/napcat" ]; then
-            napcat_installed_version=$(jq -r '.version' "${TARGET_FOLDER}/napcat/package.json")
-            IFS='.' read -r i1 i2 i3 <<<"${napcat_installed_version}"
-            IFS='.' read -r t1 t2 t3 <<<"${napcat_target_version}"
-            if ((i1 < t1 || (i1 == t1 && i2 < t2) || (i1 == t1 && i2 == t2 && i3 < t3))); then
-                install_napcat
-            else
-                log "已安装最新版本, 无需更新。"
-            fi
-        else
-            install_napcat
-        fi
-    fi
+    log "直接安装/覆盖最新NapCat..."
+    install_napcat
 }
 
 function install_napcat() {
