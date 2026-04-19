@@ -46,6 +46,13 @@ NapCat 启动!
 
 </details>
 
+#### Arch Linux / AppImage （注意！未经测试）
+
+`script/install.sh` 尝试支持在 `pacman` 环境下自动使用官方 `AppImage`。
+
+- 检测到 `pacman` 时，脚本会下载 `QQ.AppImage`，解包到 `${HOME}/Napcat/opt/QQ`。
+- NapCat 的注入流程和其他 Linux Rootless 安装保持一致，应该不需要额外改命令参数。
+
 ### Linux下如何卸载
 
 首先切换到你安装应用的用户。

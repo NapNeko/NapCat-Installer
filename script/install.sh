@@ -114,8 +114,11 @@ function detect_package_manager() {
         package_manager="dnf"
         package_installer="rpm" # 确定为 rpm
         dnf_is_el_or_fedora
+    elif command -v pacman &>/dev/null; then
+        package_manager="pacman"
+        package_installer="pacman"
     else
-        log "高级包管理器检查失败, 目前仅支持apt-get/dnf。"
+        log "高级包管理器检查失败, 目前仅支持apt-get/dnf/pacman。"
         exit 1
     fi
     log "当前高级包管理器: ${package_manager}"
@@ -423,6 +426,9 @@ function install_dependency() {
         all_pkgs="${base_pkgs} ${x_extra} ${mesa_extra} ${xcb_utils} ${fonts} ${xvfb_pkg}"
 
         execute_command "sudo dnf install --allowerasing -y ${all_pkgs}" "安装依赖"
+    elif [ "${package_manager}" = "pacman" ]; then
+        local pacman_pkgs="unzip jq curl xorg-server-xvfb xorg-xauth screen procps-ng zlib hicolor-icon-theme nss gtk3 libxss libxkbcommon alsa-lib at-spi2-core mesa"
+        execute_command "sudo pacman -Sy --noconfirm --needed ${pacman_pkgs}" "安装依赖"
     fi
     log "更新依赖成功..."
 }
@@ -447,7 +453,8 @@ function clean() {
         log "NapCatQQ压缩包删除失败, 请手动删除 NapCat.Shell.zip。"
     fi
     #  Clean up downloaded QQ package 
-    rm -f ./QQ.deb ./QQ.rpm
+    rm -f ./QQ.deb ./QQ.rpm ./QQ.AppImage
+    rm -rf ./squashfs-root
     if [ -d "${TARGET_FOLDER}/napcat.packet" ]; then
         rm -rf "${TARGET_FOLDER}/napcat.packet"
     fi
@@ -512,9 +519,9 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    #固定 3.2.21-42086 版本
+    #固定 3.2.27-47354 版本
     
-    linuxqq_target_version="3.2.25-45758"
+    linuxqq_target_version="3.2.27-47354"
 }
 
 function compare_linuxqq_versions() {
@@ -634,19 +641,25 @@ function install_linuxqq_rootless() {
 
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/7516007c/linuxqq_3.2.25-45758_x86_64.rpm"
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_x86_64.rpm"
             qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/7516007c/linuxqq_3.2.25-45758_amd64.deb"
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_amd64.deb"
             qq_package_file="QQ.deb"
+        elif [ "${package_installer}" = "pacman" ]; then
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_x86_64.AppImage"
+            qq_package_file="QQ.AppImage"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/7516007c/linuxqq_3.2.25-45758_aarch64.rpm"
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_aarch64.rpm"
             qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://dldir1.qq.com/qqfile/qq/QQNT/7516007c/linuxqq_3.2.25-45758_arm64.deb"
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_arm64.deb"
             qq_package_file="QQ.deb"
+        elif [ "${package_installer}" = "pacman" ]; then
+            qq_download_url="https://dldir1v6.qq.com/qqfile/qq/QQNT/aba1444a/linuxqq_3.2.27-47354_arm64.AppImage"
+            qq_package_file="QQ.AppImage"
         fi
     fi
 
@@ -679,6 +692,27 @@ function install_linuxqq_rootless() {
             log "解压QQ (.rpm)成功"
         else
             log "解压QQ (.rpm)失败"
+            exit 1
+        fi
+    elif [ "${package_installer}" = "pacman" ]; then
+        chmod +x "./${qq_package_file}"
+        if ! "./${qq_package_file}" --appimage-extract >/dev/null 2>&1; then
+            log "解压QQ (.AppImage)失败"
+            exit 1
+        fi
+
+        mkdir -p "${INSTALL_BASE_DIR}/opt"
+        rm -rf "${QQ_BASE_PATH}"
+        mv ./squashfs-root "${QQ_BASE_PATH}"
+
+        if [ ! -x "${QQ_EXECUTABLE}" ] && [ -x "${QQ_BASE_PATH}/AppRun" ]; then
+            ln -sf "${QQ_BASE_PATH}/AppRun" "${QQ_EXECUTABLE}"
+        fi
+
+        if [ -f "${QQ_PACKAGE_JSON_PATH}" ]; then
+            log "解压QQ (.AppImage)成功"
+        else
+            log "解压QQ (.AppImage)失败"
             exit 1
         fi
     fi
