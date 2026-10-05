@@ -49,56 +49,34 @@ if [ ! -f "$QQ_EXECUTABLE" ]; then
 fi
 
 echo " [testuser] DEBUG: QQ executable found, starting screen session... "
-# 使用 screen 后台运行，并写入统一日志
-screen -dmS napcat bash -c "xvfb-run -a \"$QQ_EXECUTABLE\" --no-sandbox > /tmp/qq.log 2>&1"
+# 日志放在用户目录下：/tmp 有 protected_regular 限制，换用户后写不进别人建的同名文件
+QQ_LOG="$HOME/qq.log"
+screen -dmS napcat bash -c "xvfb-run -a \"$QQ_EXECUTABLE\" --no-sandbox > \"$QQ_LOG\" 2>&1"
 
-# 轮询等待进程或失败
-echo " [testuser] Waiting up to 25s for process to come up "
-for i in $(seq 1 25); do
-    if pgrep -u "$(whoami)" -f "$QQ_EXECUTABLE" >/dev/null 2>&1; then
+# 等 NapCat 打出 WebUI 地址，说明 QQ 启动并成功加载了 NapCat
+echo " [testuser] Waiting up to 60s for NapCat WebUI address in log "
+found=0
+for i in $(seq 1 60); do
+    if grep -q 'http://127.0.0.1:6099' "$QQ_LOG" 2>/dev/null; then
+        found=1
+        echo " [testuser] NapCat WebUI address found after ${i}s "
         break
     fi
     sleep 1
 done
 
 echo "--- QQ Log Output (Last 50 lines) ---"
-if [ -f /tmp/qq.log ]; then
-    tail -n 50 /tmp/qq.log
-else
-    echo "Log file /tmp/qq.log not found."
-fi
+tail -n 50 "$QQ_LOG" 2>/dev/null || echo "Log file $QQ_LOG not found."
 echo "-------------------------------------"
 
-echo " [testuser] Verifying if the 'qq' process is running "
-if pgrep -u "$(whoami)" -f "$QQ_EXECUTABLE" >/dev/null 2>&1; then
-    echo "Verification successful: QQ process is running."
-    echo " [testuser] Cleaning up (terminate screen session) "
-    screen -S napcat -X quit || true
-    sleep 3
-    pkill -f "Xvfb" || true
-else
-    echo "Verification failed: QQ process is NOT running."
-    echo "--- Final QQ Log (Last 100 lines) ---"
-    [ -f /tmp/qq.log ] && tail -n 100 /tmp/qq.log || echo "No log."
-    screen -S napcat -X quit || true
-    pkill -f "Xvfb" || true
+screen -S napcat -X quit || true
+sleep 3
+pkill -f "Xvfb" || true
+
+if [ "$found" != 1 ]; then
+    echo " [testuser] Ubuntu CI test failed: NapCat server address not found."
     exit 1
 fi
 EOF
 
-echo " [ROOT] Ubuntu CI test successful "
-echo " [ROOT] Ubuntu CI test successful "
-screen -dmS napcat bash -c "xvfb-run -a /home/testuser/Napcat/opt/QQ/qq --no-sandbox > /tmp/qq.log 2>&1"
-
-echo " [testuser] Waiting for QQ to start (15s)..."
-sleep 15
-
-echo " [testuser] Checking for NapCat server address in logs..."
-if grep -q 'http://127.0.0.1:6099' /tmp/qq.log; then
-    echo " [testuser] Ubuntu CI test successful: NapCat server started."
-else
-    echo " [testuser] Ubuntu CI test failed: NapCat server address not found."
-    echo " [testuser] Displaying logs:"
-    cat /tmp/qq.log
-    exit 1
-fi
+echo " [ROOT] Ubuntu CI test successful: NapCat server started. "
