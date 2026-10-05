@@ -520,9 +520,9 @@ function download_napcat() {
 }
 
 function get_qq_target_version() {
-    #固定 3.2.30-50828 版本
-    
-    linuxqq_target_version="3.2.30-50828"
+    #固定 3.2.32-52194 版本
+
+    linuxqq_target_version="3.2.32-52194"
 }
 
 function compare_linuxqq_versions() {
@@ -639,36 +639,44 @@ function install_linuxqq_rootless() {
 
     local qq_download_url=""
     local qq_package_file=""
+    local qq_remote_file=""
 
     if [ "${system_arch}" = "amd64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://qqdl.gtimg.cn/qqfile/QQNT/9.9.32/beta/727ce4e5/linuxqq_3.2.30-50828_x86_64.rpm"
+            qq_remote_file="QQ_3.2.32_260812_x86_64_01.rpm"
             qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://qqdl.gtimg.cn/qqfile/QQNT/9.9.32/beta/727ce4e5/linuxqq_3.2.30-50828_amd64.deb"
+            qq_remote_file="QQ_3.2.32_260812_amd64_01.deb"
             qq_package_file="QQ.deb"
         fi
     elif [ "${system_arch}" = "arm64" ]; then
         if [ "${package_installer}" = "rpm" ]; then
-            qq_download_url="https://qqdl.gtimg.cn/qqfile/QQNT/9.9.32/beta/727ce4e5/linuxqq_3.2.30-50828_aarch64.rpm"
+            qq_remote_file="QQ_3.2.32_260812_aarch64_01.rpm"
             qq_package_file="QQ.rpm"
         elif [ "${package_installer}" = "dpkg" ]; then
-            qq_download_url="https://qqdl.gtimg.cn/qqfile/QQNT/9.9.32/beta/727ce4e5/linuxqq_3.2.30-50828_arm64.deb"
+            qq_remote_file="QQ_3.2.32_260812_arm64_01.deb"
             qq_package_file="QQ.deb"
         fi
     fi
 
-    if [ -z "${qq_download_url}" ]; then
+    if [ -z "${qq_remote_file}" ]; then
         log "获取QQ下载链接失败, 架构不支持。"
         exit 1
     fi
 
+    # 腾讯会下架旧版本的下载链接，官方 CDN 下载失败时改从 GitHub 上的镜像下载
+    qq_download_url="https://qqdl.gtimg.cn/qqfile/QQNT/9.9.33/release/3f89efc5/${qq_remote_file}"
+    local qq_mirror_url="${target_proxy:+${target_proxy}/}https://github.com/Rodert/qq-versions/releases/download/qq-packages-20260813-1d08f1d4/${qq_remote_file}"
+
     if ! [ -f "${qq_package_file}" ]; then
         log "QQ下载链接: ${qq_download_url}"
-        curl -k -L -# "${qq_download_url}" -o "${qq_package_file}"
-        if [ $? -ne 0 ]; then
-            log "文件下载失败, 请检查错误。"
-            exit 1
+        if ! curl -f -k -L -# "${qq_download_url}" -o "${qq_package_file}"; then
+            log "官方链接下载失败, 尝试镜像: ${qq_mirror_url}"
+            if ! curl -f -k -L -# "${qq_mirror_url}" -o "${qq_package_file}"; then
+                rm -f "${qq_package_file}"
+                log "文件下载失败, 请检查错误。"
+                exit 1
+            fi
         fi
     else
         log "检测到当前目录下存在QQ安装包, 将使用本地安装包进行安装。"
