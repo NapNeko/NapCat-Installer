@@ -816,13 +816,16 @@ function shell_help() {
 
     7. --force: 传入则执行shell强制重装
 
-    使用示例: 
+    下载脚本 (依次尝试 ghfast.top、ghproxy.net 和 GitHub 直连):
+        curl -fsSL -o napcat.sh https://ghfast.top/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || curl -fsSL -o napcat.sh https://ghproxy.net/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || curl -fsSL -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh
+
+    使用示例:
     0.  使用tui使用tui可视化交互安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
+        sudo bash napcat.sh --tui
     1.  运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+        sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
     2.  运行shell安装并传入 不安装cli 不使用代理 强制重装:
-        curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force"
+        sudo bash napcat.sh --docker n --cli n --proxy 0 --force"
     echo "${help_content}"
 }
 

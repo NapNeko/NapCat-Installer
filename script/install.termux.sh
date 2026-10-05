@@ -37,7 +37,9 @@ execute_command "proot-distro install debian --override-alias napcat" "安装nap
 echo -e "${GREEN}正在初始化napcat容器...${NC}"
 init_cmd="apt update -y && \
 apt install -y sudo curl libgcrypt20 && \
-curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && \
+(curl -fsSL -o napcat.sh https://ghfast.top/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || \
+curl -fsSL -o napcat.sh https://ghproxy.net/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || \
+curl -fsSL -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh) && \
 sudo bash napcat.sh --docker n --cli n && \
 apt autoremove -y && \
 apt clean && \

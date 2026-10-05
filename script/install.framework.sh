@@ -22,8 +22,9 @@ get_system_arch() {
 network_test() {
     local found=0
     target_proxy=""
-    proxy_num=${proxy_num:-9}
-    proxy_arr=("https://github.moeyy.xyz" "https://mirror.ghproxy.com" "https://gh-proxy.com" "https://x.haod.me")
+    proxy_num=${proxy_num:-99} # 超出范围表示自动选择
+    # GitHub 加速节点，来源 https://github.akams.cn/ ，失效了就从那里换新的
+    proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://ghproxy.imciel.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
     check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     if [ ! -z "$proxy_num" ] && [ "$proxy_num" -ge 1 ] && [ "$proxy_num" -le ${#proxy_arr[@]} ]; then
         echo "手动指定代理：${proxy_arr[$proxy_num-1]}"
@@ -31,12 +32,12 @@ network_test() {
     else
         if [ "$proxy_num" -ne 0 ]; then
             echo "proxy 未指定或超出范围，正在检查${parm1}代理可用性..."
-            for proxy in "${proxy_arr[@]}"; do
-                status=$(curl -o /dev/null -s -w "%{http_code}" "$proxy/$check_url")
-                if [ $status -eq 200 ]; then
+            # 代理都不通时最后试一次直连；有的代理拿不到文件也返回 200 和网页，所以要看内容是不是 JSON
+            for proxy in "${proxy_arr[@]}" ""; do
+                if [ "$(curl -k -s -m 15 "${proxy:+${proxy}/}$check_url" | head -c1)" = "{" ]; then
                     found=1
                     target_proxy="$proxy"
-                    echo "将使用${parm1}代理：$proxy"
+                    echo "将使用${parm1}代理：${proxy:-直连}"
                     break
                 fi
             done
@@ -50,6 +51,19 @@ network_test() {
         fi
     fi
     napcat_download_url="${target_proxy:+${target_proxy}/}https://github.com/NapNeko/NapCatQQ/releases/download/$napcat_version/NapCat.Framework.zip"
+}
+
+# 函数：获取最新 NapCat 版本号。读 GitHub releases/latest 跳转到的 tag，不占 API 次数，直连不通时换代理
+get_latest_napcat_version() {
+    local proxy tag
+    for proxy in "" "https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://gh.monlor.com"; do
+        tag=$(curl -k -s -m 10 -o /dev/null -w '%{redirect_url}' "${proxy:+${proxy}/}https://github.com/NapNeko/NapCatQQ/releases/latest" | sed -n 's|.*/releases/tag/\([^/?#[:space:]]*\).*|\1|p')
+        if [ -n "$tag" ]; then
+            echo "$tag"
+            return 0
+        fi
+    done
+    return 1
 }
 
 if ! command -v sudo &> /dev/null; then
@@ -76,8 +90,8 @@ fi
 echo "当前系统架构：$system_arch"
 
 # 获取最新最热NapCat版本号
-napcat_version=$(curl "https://nclatest.znin.net/" | jq -r '.tag_name')
-if [ -z $napcat_version ]; then
+napcat_version=$(get_latest_napcat_version)
+if [ -z "$napcat_version" ]; then
     echo "无法获取NapCatQQ版本，请检查错误。"
     exit 1
 fi

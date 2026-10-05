@@ -28,20 +28,25 @@ NapCat 启动!
 
   8. --force: 传入则执行shell强制重装
 
+  **下载脚本**（依次尝试 ghfast.top、ghproxy.net 和 GitHub 直连，加速节点失效时可以换成 [github.akams.cn](https://github.akams.cn/) 上的其它节点）:
+  ```bash
+  curl -fsSL -o napcat.sh https://ghfast.top/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || curl -fsSL -o napcat.sh https://ghproxy.net/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh || curl -fsSL -o napcat.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.sh
+  ```
+
   **使用示例:**
   1. 使用tui可视化交互安装:
       ```bash
-      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --tui
+      sudo bash napcat.sh --tui
       ```
 
   2. 运行docker安装并传入 qq\"123456789\" 模式ws 使用第一个代理 直接安装:
       ```bash
-      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
+      sudo bash napcat.sh --docker y --qq \"123456789\" --mode ws --proxy 1 --confirm
       ```
 
   3. 运行shell安装并传入 不安装cli 不使用代理 强制重装:
       ```bash
-      curl -o napcat.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.sh && sudo bash napcat.sh --docker n --cli n --proxy 0 --force
+      sudo bash napcat.sh --docker n --cli n --proxy 0 --force
       ```
 
 </details>
@@ -60,7 +65,7 @@ NapCat 启动!
 ### Termux(存储空间占用~1.5GB)
 执行此代码 稍等片刻即可运行
 ```bash
-curl -o napcat.termux.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.termux.sh && bash napcat.termux.sh
+(curl -fsSL -o napcat.termux.sh https://ghfast.top/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.termux.sh || curl -fsSL -o napcat.termux.sh https://ghproxy.net/https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.termux.sh || curl -fsSL -o napcat.termux.sh https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.termux.sh) && bash napcat.termux.sh
 ```
 或者使用tmoe脚本来安装proot(无root)/chroot(有root)容器并执行上面的[Linux安装命令](#使用)而非本命令
 
@@ -68,8 +73,8 @@ curl -o napcat.termux.sh https://nclatest.znin.net/NapNeko/NapCat-Installer/main
 在需要的文件夹右键选择 `在终端中打开` 
 ![Open](https://github.com/NapNeko/NapCat-Installer/assets/61873808/1ceb84a5-0aed-4193-ac19-b0128299632d)
 
-```bat
-curl -o install.ps1 https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.ps1
+```powershell
+foreach ($p in "https://ghfast.top/", "https://ghproxy.net/", "") { try { Invoke-WebRequest -Uri "${p}https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.ps1" -OutFile ./install.ps1 -UseBasicParsing; break } catch {} }
 powershell -ExecutionPolicy ByPass -File ./install.ps1 -verb runas
 ```
 复制上面内容 粘贴 选择仍然粘贴后回车即可
@@ -81,9 +86,7 @@ Win+R 输入 cmd 输入以下内容
 ```bat
 more +3 "%~f0" >>generate.ps1 && powershell -ExecutionPolicy ByPass -File ./generate.ps1 -verb runas && del ./generate.ps1 && powershell -ExecutionPolicy ByPass -File ./install.ps1 -verb runas 
 goto :eof
-$url = "https://nclatest.znin.net/NapNeko/NapCat-Installer/main/script/install.ps1"
-$response = Invoke-WebRequest -Uri $url -UseBasicParsing
-    [IO.File]::WriteAllBytes("./install.ps1", $response.Content)
+foreach ($p in "https://ghfast.top/", "https://ghproxy.net/", "") { try { Invoke-WebRequest -Uri "${p}https://raw.githubusercontent.com/NapNeko/NapCat-Installer/main/script/install.ps1" -OutFile ./install.ps1 -UseBasicParsing; break } catch {} }
 ```
 
 ## 常见问题

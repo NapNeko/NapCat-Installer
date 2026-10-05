@@ -4,18 +4,38 @@ Add-Type -AssemblyName System.Windows.Forms
 # Verify that types from both assemblies were loaded.
 [System.IO.Compression.ZipArchiveMode]; [IO.Compression.ZipFile]
 
-function Get-QQDownloadUrl {
-    #请求https://cdn-go.cn/qq-web/im.qq.com_new/latest/rainbow/windowsDownloadUrl.js获取返回文本 正则匹配 https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_64_[0-9]{2}\.exe
+# 进度条会让大文件下载慢很多
+$ProgressPreference = 'SilentlyContinue'
+
+# GitHub 加速节点，来源 https://github.akams.cn/ ，失效了就从那里换新的；最后的空串表示直连
+$GithubProxies = @("https://ghfast.top/", "https://ghproxy.net/", "https://github.dpik.top/", "https://ghm.078465.xyz/", "https://gh.monlor.com/", "https://gh-proxy.com/", "")
+
+# QQ 9.9.33-52230。腾讯下架了部分旧版本的下载链接，所以先试官方 CDN，再试 GitHub 上的镜像，下载后校验 SHA256
+$QQDownloadUrls = @("https://qqdl.gtimg.cn/qqfile/QQNT/9.9.33/release/497e2f1f/QQ_9.9.33_260813_x64_01.exe") +
+    ($GithubProxies | ForEach-Object { $_ + "https://github.com/Rodert/qq-versions/releases/download/qq-packages-20260813-1d08f1d4/QQ_9.9.33_260813_x64_01.exe" })
+$QQSha256 = "b25c0d3ce9df764074a9118d0ded927e1b2d7ebf60e306112e8df18a040ec492"
+
+# 直接用 .NET 算 SHA256，不依赖 Get-FileHash 所在的模块
+function Get-Sha256([string]$path) {
+    $sha256 = [System.Security.Cryptography.SHA256]::Create()
+    $stream = [System.IO.File]::OpenRead($path)
     try {
-        $url = "https://qq-web.cdn-go.cn/im.qq.com_new/4d7d217d/202408201134/windowsDownloadUrl.js"
-        $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-        $regex = "https://dldir1\.qq\.com/qqfile/qq/QQNT/Windows/QQ_[0-9]+\.[0-9]+\.[0-9]+_[0-9]{6}_x64_[0-9]{2}\.exe"
-        #$downloadUrl = [regex]::Match($response.Content, $regex).Value
-        $downloadUrl = "https://dldir1.qq.com/qqfile/qq/QQNT/b07cb1a5/QQ9.9.15.27597_x64.exe"
-        return $downloadUrl
+        return ([System.BitConverter]::ToString($sha256.ComputeHash($stream)) -replace '-', '').ToLower()
     }
-    catch {
-        throw "get QQ download url error: $_"
+    finally {
+        $stream.Close()
+        $sha256.Dispose()
+    }
+}
+
+# zip 文件以 PK 开头，用来识别代理拿不到文件时返回的网页
+function Test-ZipFile([string]$path) {
+    $stream = [System.IO.File]::OpenRead($path)
+    try {
+        return ($stream.ReadByte() -eq 0x50) -and ($stream.ReadByte() -eq 0x4B)
+    }
+    finally {
+        $stream.Close()
     }
 }
 
@@ -52,10 +72,26 @@ function Get-IsQQInstalled {
 }
 
 function Install-QQ {
+    $QQInstallerPath = "$env:TEMP\QQInstaller.exe"
+    $isDownloaded = $false
+    foreach ($url in $QQDownloadUrls) {
+        try {
+            Write-Host "Download QQ: $url"
+            Invoke-WebRequest -Uri $url -OutFile $QQInstallerPath -UseBasicParsing
+            if ((Get-Sha256 $QQInstallerPath) -eq $QQSha256) {
+                $isDownloaded = $true
+                break
+            }
+            Write-Host "SHA256 mismatch, try next ..."
+        }
+        catch {
+            Write-Host "Download failed, try next ..."
+        }
+    }
+    if (!$isDownloaded) {
+        return $false
+    }
     try {
-        $QQInstallerUrl = Get-QQDownloadUrl
-        $QQInstallerPath = "$env:TEMP\QQInstaller.exe"
-        Invoke-WebRequest -Uri $QQInstallerUrl -OutFile $QQInstallerPath
         Start-Process -FilePath $QQInstallerPath -ArgumentList "/s" -Wait
         Remove-Item -Path $QQInstallerPath -Force
     }
@@ -80,47 +116,8 @@ function Install-VCREDIST {
     }
 }
 
-function Get-RemoteNapCatVersion {
-    [CmdletBinding()]
-    param(
-        [Parameter(Mandatory=$false, Position=0)]
-        [string]$url = "https://nclatest.znin.net/"
-    )
-
-    begin {
-        # 验证URL格式
-        if (-not [Uri]::IsWellFormedUriString($url, [System.UriKind]::Absolute)) {
-            throw "The provided URL '$url' is not well formed."
-        }
-    }
-
-    process {
-        try {
-            # 使用UseBasicParsing是为了在不支持.NET Framework的系统上避免问题
-            $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-            
-            # 检查HTTP状态码
-            if ($response.StatusCode -ne 200) {
-                throw "Failed to retrieve the resource at '$url'. Status code: $($response.StatusCode)"
-            }
-
-            $json = $response.Content | ConvertFrom-Json
-            # 验证JSON是否包含tag_name属性
-            if (-not ($json -and $json.tag_name)) {
-                throw "The JSON content at '$url' does not contain a valid 'tag_name' property."
-            }
-
-            return $json.tag_name
-        }
-        catch [System.Net.WebException], [System.Management.Automation.PSInvocationException] {
-            # 处理可能的网络异常和JSON解析异常
-            throw "Error when attempting to get version from '$url': $_"
-        }
-    }
-}
-
 # 用于检测是否安装QQ
-$targetVersion = "9.9.15.27597"
+$targetVersion = "9.9.33.52230"
 $QQInstallPath = ""
 $isQQInstalled = Get-IsQQInstalled -targetVersion $targetVersion -installPath ([ref]$QQInstallPath)
 if (!$isQQInstalled) {
@@ -185,25 +182,33 @@ if (!$isQQInstalled) {
 #     Write-Host "NapCat path already exists!"
 #     exit 1
 # }
-# 获取远程版本号
-$remoteVersion = Get-RemoteNapCatVersion
-if ($null -eq $remoteVersion) {
-    Write-Host "Get remote version failed."
+# 直接下载最新版，不再单独查询版本号
+$zipFile = Join-Path (Get-Location) "NapCatQQ.zip"
+$isDownloaded = $false
+foreach ($proxy in $GithubProxies) {
+    $url = "${proxy}https://github.com/NapNeko/NapCatQQ/releases/latest/download/NapCat.Shell.zip"
+    try {
+        Write-Host "Download NapCat: $url"
+        Invoke-WebRequest -Uri $url -OutFile $zipFile -UseBasicParsing
+        if (Test-ZipFile $zipFile) {
+            $isDownloaded = $true
+            break
+        }
+        Write-Host "Not a zip file, try next ..."
+    }
+    catch {
+        Write-Host "Download failed, try next ..."
+    }
+}
+if (!$isDownloaded) {
+    Write-Host "Download failed."
     exit 1
 }
-Write-Host "Remote Version: $remoteVersion"
-#下载https://github.com/NapNeko/NapCatQQ/releases/download/v$remoteVersion/NapCat.Shell.zip
-$url = "https://mirror.ghproxy.com/https://github.com/NapNeko/NapCatQQ/releases/download/$remoteVersion/NapCat.Shell.zip"
 try {
-    Write-Host "Wait ..."
-    $response = Invoke-WebRequest -Uri $url -UseBasicParsing
-    $zipFile = ".\NapCatQQ.zip"
-    # 保存文件到当前目录
-    [IO.File]::WriteAllBytes($zipFile, $response.Content)
-    Expand-Archive -Path "./NapCatQQ.zip" -DestinationPath "./NapCatQQ/" -Force
+    Expand-Archive -Path $zipFile -DestinationPath "./NapCatQQ/" -Force
     Remove-Item -Path $zipFile -Force
 }catch{
-    Write-Host "Download failed. $_"
+    Write-Host "Unzip failed. $_"
     exit 1
 }
 Write-Host "Napcat Path: ./NapCatQQ/"
@@ -213,5 +218,5 @@ taskkill /f /im QQ.exe 2>$null | Out-Null
 $result = [System.Windows.Forms.MessageBox]::Show("Run NapCatQQ?", "Hint", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
 if ($result -eq [System.Windows.Forms.DialogResult]::Yes) {
     Set-Location ./NapCatQQ
-    powershell -ExecutionPolicy ByPass -File ./BootWay05.ps1
+    cmd /c launcher-user.bat
 }

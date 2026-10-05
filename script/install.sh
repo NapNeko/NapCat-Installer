@@ -146,6 +146,9 @@ function format_speed() {
     fi
 }
 
+# GitHub 加速节点，来源 https://github.akams.cn/ ，失效了就从那里换新的
+github_proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://ghproxy.imciel.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
+
 function network_test() {
     # fixme：可能测速下载的文件过小，导致测速不准确，考虑改为下载一个较大的文件进行测速
     local parm1=${1}
@@ -161,7 +164,7 @@ function network_test() {
     log "命令行传入代理参数 (proxy_num_arg): '${proxy_num_arg}', 本次测试生效设置: '${current_proxy_setting}'"
 
     if [ "${parm1}" == "Github" ]; then
-        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
+        proxy_arr=("${github_proxy_arr[@]}")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     elif [ "${parm1}" == "Docker" ]; then
         proxy_arr=("docker.1ms.run" "docker.xuanyuan.me" "docker.mybacc.com" "dytt.online" "lispy.org")
@@ -170,7 +173,7 @@ function network_test() {
         log "错误: 未知的网络测试目标 '${parm1}', 默认测试 Github"
         parm1="Github" # 确保 parm1 被重置以便后续逻辑正确执行
         # 为 Github 重置 proxy_arr 和 check_url
-        proxy_arr=("https://ghfast.top" "https://git.yylx.win/" "https://gh-proxy.com" "https://ghfile.geekertao.top" "https://gh-proxy.net" "https://j.1win.ggff.net" "https://ghm.078465.xyz" "https://gitproxy.127731.xyz" "https://jiashu.1win.eu.org" "https://github.tbedu.top")
+        proxy_arr=("${github_proxy_arr[@]}")
         check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     fi
 
@@ -200,17 +203,20 @@ function network_test() {
 
         local best_proxy="" # 空字符串代表直连
         local best_speed=0
+        # 有的代理拿不到文件也会返回 200 和一个网页，所以要看下载到的内容是不是 package.json
+        local probe_file
+        probe_file=$(mktemp)
 
         # 首先测试直连 (仅当有 check_url 时)
         if [ -n "${check_url}" ]; then
             log "测速: 直连..."
             local curl_output
-            curl_output=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout * 3)) -o /dev/null -s -w "%{http_code}:%{exitcode}:%{speed_download}" "${check_url}")
+            curl_output=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout * 3)) -o "${probe_file}" -s -w "%{http_code}:%{exitcode}:%{speed_download}" "${check_url}")
             local status=$(echo "${curl_output}" | cut -d: -f1)
             local curl_exit_code=$(echo "${curl_output}" | cut -d: -f2)
             local download_speed=$(echo "${curl_output}" | cut -d: -f3 | cut -d. -f1)
 
-            if [ "${curl_exit_code}" -eq 0 ] && [ "${status}" -eq 200 ]; then
+            if [ "${curl_exit_code}" -eq 0 ] && [ "${status}" -eq 200 ] && [ "$(head -c1 "${probe_file}")" = "{" ]; then
                 local formatted_speed=$(format_speed "${download_speed}")
                 log "测速: 直连 - ${formatted_speed}"
                 best_speed=${download_speed}
@@ -231,7 +237,8 @@ function network_test() {
                 fi
 
                 local curl_output
-                curl_output=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout * 3)) -o /dev/null -s -w "%{http_code}:%{exitcode}:%{speed_download}" "${test_target_url}")
+                : > "${probe_file}"
+                curl_output=$(curl -k -L --connect-timeout ${timeout} --max-time $((timeout * 3)) -o "${probe_file}" -s -w "%{http_code}:%{exitcode}:%{speed_download}" "${test_target_url}")
                 local status=$(echo "${curl_output}" | cut -d: -f1)
                 local curl_exit_code=$(echo "${curl_output}" | cut -d: -f2)
                 local download_speed=$(echo "${curl_output}" | cut -d: -f3 | cut -d. -f1)
@@ -240,7 +247,7 @@ function network_test() {
                     continue
                 fi
 
-                if ([ "${parm1}" == "Github" ] && [ "${status}" -eq 200 ]) ||
+                if ([ "${parm1}" == "Github" ] && [ "${status}" -eq 200 ] && [ "$(head -c1 "${probe_file}")" = "{" ]) ||
                    ([ "${parm1}" == "Docker" ] && ([ "${status}" -eq 200 ] || [ "${status}" -eq 301 ] || [ "${status}" -eq 302 ])); then
                     
                     local formatted_speed=$(format_speed "${download_speed}")
@@ -255,6 +262,7 @@ function network_test() {
         else
             log "警告: ${parm1} 代理测试缺少有效的检查URL, 无法自动选择代理。"
         fi
+        rm -f "${probe_file}"
 
         # 根据测速结果做出最终决定
         if [[ ${best_speed} -gt 0 ]]; then
