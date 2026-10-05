@@ -118,7 +118,7 @@ fi
 # 判断LITELOADERQQNT_PROFILE是否存在
 if [ $LITELOADERQQNT_PROFILE ]; then
     network_test
-    curl -o ./NapCat.zip $napcat_download_url
+    curl -fL -o ./NapCat.zip "$napcat_download_url" || { echo "NapCat 下载失败，请检查网络。"; exit 1; }
     sudo unzip -d $LITELOADERQQNT_PROFILE/plugins/ ./NapCat.zip
     echo '安装结束，请重启QQ'
 else
@@ -126,11 +126,11 @@ else
     package_main1=$(jq '.main' $QQ_PATH/package.json)
     package_main=${package_main1#*/}
     liteloaderjs_path=${QQ_PATH}'/app_launcher/'${package_main%\"*}
-    liteloader_path=$(cat liteloaderjs_path)
+    liteloader_path=$(cat "$liteloaderjs_path")
     liteloaderqqnt1=${liteloader_path#*\`}
     liteloaderqqnt=${liteloaderqqnt1%*\`}
     network_test
-    curl -o ./NapCat.zip $napcat_download_url
+    curl -fL -o ./NapCat.zip "$napcat_download_url" || { echo "NapCat 下载失败，请检查网络。"; exit 1; }
     sudo unzip -d $liteloaderqqnt/plugins/ ./NapCat.zip
     echo '安装结束，请重启QQ'
 fi
