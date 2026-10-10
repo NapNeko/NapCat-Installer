@@ -345,7 +345,8 @@ function install_dependency() {
         fi
         enable_dnf_repos_and_cache
         #  Added cpio for extracting .rpm 
-        base_pkgs="zip unzip jq curl screen procps-ng cpio rpm-build nss mesa-libgbm atk at-spi2-atk gtk3 alsa-lib pango cairo libdrm libXcursor libXrandr libXdamage libXcomposite libXfixes libXrender libXi libXtst libXScrnSaver cups-libs libxkbcommon krb5-libs xorg-x11-xauth"
+        base_pkgs="zip unzip jq screen procps-ng cpio rpm-build nss mesa-libgbm atk at-spi2-atk gtk3 alsa-lib pango cairo libdrm libXcursor libXrandr libXdamage libXcomposite libXfixes libXrender libXi libXtst libXScrnSaver cups-libs libxkbcommon krb5-libs xorg-x11-xauth"
+        if ! command -v curl &>/dev/null; then base_pkgs+=" curl"; fi
         x_extra="libX11-xcb"
         mesa_extra="mesa-dri-drivers mesa-libEGL mesa-libGL"
         xcb_utils="xcb-util xcb-util-image xcb-util-wm xcb-util-keysyms xcb-util-renderutil"
