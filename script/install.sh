@@ -692,6 +692,7 @@ function generate_docker_command() {
         -e "NAPCAT_GID=$(id -g)" -e "NAPCAT_UID=$(id -u)" -p 6099:6099
         --mount type=volume,source=napcat_config,target=/app/napcat/config
         --mount type=volume,source=napcat_qq,target=/app/.config/QQ
+        --mount type=volume,source=napcat_plugins,target=/app/napcat/plugins
         --name napcat --restart=always)
     if [ "${mode}" = "ws" ]; then
         docker_args+=(-p 3001:3001)
