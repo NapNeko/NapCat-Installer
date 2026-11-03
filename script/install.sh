@@ -156,7 +156,7 @@ function format_speed() {
 }
 
 # GitHub 加速节点，来源 https://github.akams.cn/ ，失效了就从那里换新的
-github_proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://ghproxy.imciel.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
+github_proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
 
 function curl_download() {
     local source="$1" destination="$2" partial status
