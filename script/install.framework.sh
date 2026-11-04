@@ -24,7 +24,7 @@ network_test() {
     target_proxy=""
     proxy_num=${proxy_num:-99} # 超出范围表示自动选择
     # GitHub 加速节点，来源 https://github.akams.cn/ ，失效了就从那里换新的
-    proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://ghproxy.imciel.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
+    proxy_arr=("https://ghfast.top" "https://ghproxy.net" "https://github.dpik.top" "https://ghm.078465.xyz" "https://gh.monlor.com" "https://git.669966.xyz" "https://gh.acmsz.top" "https://gitproxy.mrhjx.cn" "https://gh-proxy.com")
     check_url="https://raw.githubusercontent.com/NapNeko/NapCatQQ/main/package.json"
     if [ ! -z "$proxy_num" ] && [ "$proxy_num" -ge 1 ] && [ "$proxy_num" -le ${#proxy_arr[@]} ]; then
         echo "手动指定代理：${proxy_arr[$proxy_num-1]}"
